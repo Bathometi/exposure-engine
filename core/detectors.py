@@ -3,43 +3,59 @@ from core.schema import StatusEnum, ConfidenceLevel
 
 
 class BaseDetector:
-    """Базовий клас для всіх детекторів."""
     @staticmethod
     def detect(status_code: int, response_data: Any) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
         raise NotImplementedError
 
 
 class StatusCodeDetector(BaseDetector):
-    """Детектор для стандартних REST API (GitHub, DockerHub), де status code є вирішальним."""
+    """Детектор для REST API (GitHub, DockerHub, GitLab)."""
     @staticmethod
     def detect(status_code: int, response_data: Any) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
         details = {}
         if status_code == 200:
             if isinstance(response_data, dict):
-                # Забираємо тільки ключові метадані, як радив ментор (без всього raw_json)
                 details["name"] = response_data.get("name")
                 details["created_at"] = response_data.get("created_at")
                 details["public_repos"] = response_data.get("public_repos")
+            elif isinstance(response_data, list) and len(response_data) > 0:
+                # Наприклад, для GitLab API, який повертає масив користувачів
+                user = response_data[0]
+                details["name"] = user.get("name")
+                details["username"] = user.get("username")
+                details["created_at"] = user.get("created_at")
             return StatusEnum.FOUND, ConfidenceLevel.HIGH, details
         elif status_code == 404:
             return StatusEnum.NOT_FOUND, ConfidenceLevel.HIGH, details
-        elif status_code in (429, 403):
-            return StatusEnum.RATE_LIMITED, ConfidenceLevel.LOW, details
-        return StatusEnum.ERROR, ConfidenceLevel.LOW, details
+        elif status_code == 429:
+            return StatusEnum.RATE_LIMITED, ConfidenceLevel.MEDIUM, details
+        elif status_code == 403:
+            return StatusEnum.BLOCKED, ConfidenceLevel.MEDIUM, details
+        return StatusEnum.UNKNOWN, ConfidenceLevel.LOW, details
 
 
-class HTMLMarkerDetector(BaseDetector):
-    """Детектор для сайтів на кшталт Telegram, які завжди повертають 200 OK."""
+class TelegramDetector(BaseDetector):
+    """Спеціалізований маркерний детектор для Telegram Web (t.me/username)."""
     @staticmethod
-    def detect(status_code: int, response_data: Any, not_found_marker: str) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
+    def detect(status_code: int, html_text: str) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
         details = {}
-        if status_code == 200 and isinstance(response_data, str):
-            # Якщо в HTML-коді є маркер відсутності акаунта
-            if not_found_marker.lower() in response_data.lower():
-                return StatusEnum.NOT_FOUND, ConfidenceLevel.HIGH, details
+        if status_code != 200 or not isinstance(html_text, str):
+            if status_code == 429:
+                return StatusEnum.RATE_LIMITED, ConfidenceLevel.MEDIUM, details
+            elif status_code == 403:
+                return StatusEnum.BLOCKED, ConfidenceLevel.MEDIUM, details
+            return StatusEnum.UNKNOWN, ConfidenceLevel.LOW, details
+
+        html_lower = html_text.lower()
+
+        # Позитивні докази існування акаунта / каналу / групи:
+        # На існуючих сторінках t.me є елементи tgme_page_title або tgme_page_extra
+        has_title = 'class="tgme_page_title"' in html_lower
+        has_extra = 'class="tgme_page_extra"' in html_lower
+        has_action_button = 'tgme_action_button' in html_lower
+
+        if has_title or has_extra or has_action_button:
             return StatusEnum.FOUND, ConfidenceLevel.HIGH, details
-        elif status_code == 404:
-            return StatusEnum.NOT_FOUND, ConfidenceLevel.HIGH, details
-        elif status_code in (429, 403):
-            return StatusEnum.RATE_LIMITED, ConfidenceLevel.LOW, details
-        return StatusEnum.ERROR, ConfidenceLevel.LOW, details
+
+        # Якщо позитивних елементів профілю немає
+        return StatusEnum.NOT_FOUND, ConfidenceLevel.HIGH, details

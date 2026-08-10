@@ -1,8 +1,8 @@
 import asyncio
 import aiohttp
-from typing import Optional, Dict, Any
+from typing import Dict, Any
 from core.schema import Evidence, EntityType, StatusEnum, ConfidenceLevel
-from core.detectors import StatusCodeDetector, HTMLMarkerDetector
+from core.detectors import StatusCodeDetector, TelegramDetector
 
 
 class HTTPCollector:
@@ -34,11 +34,10 @@ class HTTPCollector:
                             await asyncio.sleep(2 ** attempt)
                             continue
 
-                        # Зчитаємо дані залежно від типу детектора
-                        if detector_type == "html_marker":
+                        if detector_type == "telegram":
                             response_data = await response.text()
-                            status, confidence, parsed_details = HTMLMarkerDetector.detect(
-                                status_code, response_data, platform_config.get("not_found_marker", "")
+                            status, confidence, parsed_details = TelegramDetector.detect(
+                                status_code, response_data
                             )
                         else:
                             try:

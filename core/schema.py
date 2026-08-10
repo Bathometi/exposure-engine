@@ -1,29 +1,27 @@
 from enum import Enum
-from datetime import datetime
-from typing import Optional, Any, Dict
 from pydantic import BaseModel, Field
+from typing import Dict, Any, Optional
 
 
 class EntityType(str, Enum):
-    EMAIL = "email"
     USERNAME = "username"
+    EMAIL = "email"
     PHONE = "phone"
-    DOMAIN = "domain"
-    BREACH = "breach"
-
-
-class ConfidenceLevel(str, Enum):
-    HIGH = "HIGH"
-    MEDIUM = "MEDIUM"
-    LOW = "LOW"
-    UNKNOWN = "UNKNOWN"
 
 
 class StatusEnum(str, Enum):
-    FOUND = "FOUND"
-    NOT_FOUND = "NOT_FOUND"
-    ERROR = "ERROR"
-    RATE_LIMITED = "RATE_LIMITED"
+    FOUND = "found"
+    NOT_FOUND = "not_found"
+    RATE_LIMITED = "rate_limited"
+    BLOCKED = "blocked"
+    UNKNOWN = "unknown"
+    ERROR = "error"
+
+
+class ConfidenceLevel(str, Enum):
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
 
 
 class Evidence(BaseModel):
@@ -32,7 +30,6 @@ class Evidence(BaseModel):
     normalized_value: str
     source_name: str
     status: StatusEnum
-    confidence: ConfidenceLevel = ConfidenceLevel.UNKNOWN
-    collected_at: datetime = Field(default_factory=datetime.utcnow)
+    confidence: ConfidenceLevel
     details: Dict[str, Any] = Field(default_factory=dict)
-    limitations: Optional[str] = "Evidence collected from authenticated or public API context."
+    limitations: Optional[str] = None
