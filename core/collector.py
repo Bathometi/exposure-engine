@@ -1,7 +1,8 @@
 import asyncio
 import aiohttp
-from typing import Optional
+from typing import Optional, Dict, Any
 from core.schema import Evidence, EntityType, StatusEnum, ConfidenceLevel
+from core.detectors import StatusCodeDetector, HTMLMarkerDetector
 
 
 class HTTPCollector:
@@ -12,15 +13,16 @@ class HTTPCollector:
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) OSINT-Exposure-Engine/1.0"
         }
 
-    async def check_url(
+    async def check_platform(
         self, 
         entity_type: EntityType, 
         raw_value: str, 
         normalized_value: str, 
-        url: str, 
-        source_name: str
+        source_name: str,
+        platform_config: Dict[str, Any]
     ) -> Evidence:
-        """Асинхронний HTTP GET запит із підтримкою retries та exponential backoff."""
+        url = platform_config["url_template"].format(username=normalized_value)
+        detector_type = platform_config.get("detector", "status_code")
         
         for attempt in range(1, self.max_retries + 1):
             try:
@@ -28,25 +30,27 @@ class HTTPCollector:
                     async with session.get(url, allow_redirects=True) as response:
                         status_code = response.status
 
-                        # Якщо середовище просить почекати (429) або сервер тимчасово впав (50x)
                         if status_code in (429, 500, 502, 503, 504) and attempt < self.max_retries:
-                            backoff_time = 2 ** attempt  # 2сек, 4сек...
-                            print(f"[!] {source_name} returned {status_code}. Retrying in {backoff_time}s (Attempt {attempt}/{self.max_retries})...")
-                            await asyncio.sleep(backoff_time)
+                            await asyncio.sleep(2 ** attempt)
                             continue
 
-                        if status_code == 200:
-                            status = StatusEnum.FOUND
-                            confidence = ConfidenceLevel.HIGH
-                        elif status_code == 404:
-                            status = StatusEnum.NOT_FOUND
-                            confidence = ConfidenceLevel.HIGH
-                        elif status_code in (429, 403):
-                            status = StatusEnum.RATE_LIMITED
-                            confidence = ConfidenceLevel.LOW
+                        # Зчитаємо дані залежно від типу детектора
+                        if detector_type == "html_marker":
+                            response_data = await response.text()
+                            status, confidence, parsed_details = HTMLMarkerDetector.detect(
+                                status_code, response_data, platform_config.get("not_found_marker", "")
+                            )
                         else:
-                            status = StatusEnum.ERROR
-                            confidence = ConfidenceLevel.LOW
+                            try:
+                                response_data = await response.json()
+                            except Exception:
+                                response_data = None
+                            status, confidence, parsed_details = StatusCodeDetector.detect(
+                                status_code, response_data
+                            )
+
+                        parsed_details["target_url"] = url
+                        parsed_details["http_status"] = status_code
 
                         return Evidence(
                             entity_type=entity_type,
@@ -55,15 +59,13 @@ class HTTPCollector:
                             source_name=source_name,
                             status=status,
                             confidence=confidence,
-                            details={"http_status": status_code, "target_url": url, "attempts": attempt},
-                            limitations="Status determined via HTTP response status code."
+                            details=parsed_details,
+                            limitations=f"Status determined via {detector_type} detector."
                         )
 
             except asyncio.TimeoutError:
                 if attempt < self.max_retries:
-                    backoff_time = 2 ** attempt
-                    print(f"[!] Timeout on {source_name}. Retrying in {backoff_time}s (Attempt {attempt}/{self.max_retries})...")
-                    await asyncio.sleep(backoff_time)
+                    await asyncio.sleep(2 ** attempt)
                     continue
 
                 return Evidence(
@@ -73,8 +75,8 @@ class HTTPCollector:
                     source_name=source_name,
                     status=StatusEnum.ERROR,
                     confidence=ConfidenceLevel.LOW,
-                    details={"error": "Request timed out after retries", "attempts": attempt},
-                    limitations="Target server failed to respond within timeout window."
+                    details={"error": "Request timed out", "target_url": url},
+                    limitations="Timeout reached."
                 )
             except Exception as e:
                 return Evidence(
@@ -84,6 +86,6 @@ class HTTPCollector:
                     source_name=source_name,
                     status=StatusEnum.ERROR,
                     confidence=ConfidenceLevel.LOW,
-                    details={"error": str(e), "attempts": attempt},
-                    limitations="Network or connection level failure occurred."
+                    details={"error": str(e), "target_url": url},
+                    limitations="Network failure."
                 )
