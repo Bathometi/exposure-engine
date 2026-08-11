@@ -1,61 +1,185 @@
-from typing import Dict, Any, Tuple
-from core.schema import StatusEnum, ConfidenceLevel
+from typing import Any, Dict, Tuple
+
+from core.schema import ConfidenceLevel, StatusEnum
 
 
 class BaseDetector:
     @staticmethod
-    def detect(status_code: int, response_data: Any) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
         raise NotImplementedError
 
 
 class StatusCodeDetector(BaseDetector):
-    """Детектор для REST API (GitHub, DockerHub, GitLab)."""
+    """
+    Детектор для REST/JSON API:
+    GitHub, GitLab, DockerHub, Reddit.
+    """
+
     @staticmethod
-    def detect(status_code: int, response_data: Any) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
+
         details = {}
+
+        # Rate limit
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        # Access blocked
+        if status_code == 403:
+            return (
+                StatusEnum.BLOCKED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        # Explicitly missing
+        if status_code == 404:
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                details,
+            )
+
+        # Successful API response
         if status_code == 200:
+
+            # API returned a JSON object
             if isinstance(response_data, dict):
                 details["name"] = response_data.get("name")
+                details["username"] = response_data.get("username")
                 details["created_at"] = response_data.get("created_at")
                 details["public_repos"] = response_data.get("public_repos")
-            elif isinstance(response_data, list) and len(response_data) > 0:
-                # Наприклад, для GitLab API, який повертає масив користувачів
+
+                return (
+                    StatusEnum.FOUND,
+                    ConfidenceLevel.HIGH,
+                    details,
+                )
+
+            # GitLab returns a list
+            if isinstance(response_data, list):
+
+                # Empty list = username not found
+                if len(response_data) == 0:
+                    return (
+                        StatusEnum.NOT_FOUND,
+                        ConfidenceLevel.HIGH,
+                        details,
+                    )
+
                 user = response_data[0]
-                details["name"] = user.get("name")
-                details["username"] = user.get("username")
-                details["created_at"] = user.get("created_at")
-            return StatusEnum.FOUND, ConfidenceLevel.HIGH, details
-        elif status_code == 404:
-            return StatusEnum.NOT_FOUND, ConfidenceLevel.HIGH, details
-        elif status_code == 429:
-            return StatusEnum.RATE_LIMITED, ConfidenceLevel.MEDIUM, details
-        elif status_code == 403:
-            return StatusEnum.BLOCKED, ConfidenceLevel.MEDIUM, details
-        return StatusEnum.UNKNOWN, ConfidenceLevel.LOW, details
+
+                if isinstance(user, dict):
+                    details["name"] = user.get("name")
+                    details["username"] = user.get("username")
+                    details["created_at"] = user.get("created_at")
+
+                return (
+                    StatusEnum.FOUND,
+                    ConfidenceLevel.HIGH,
+                    details,
+                )
+
+            # HTTP 200, але формат відповіді незрозумілий
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        # Інші HTTP-коди
+        return (
+            StatusEnum.UNKNOWN,
+            ConfidenceLevel.LOW,
+            details,
+        )
 
 
 class TelegramDetector(BaseDetector):
-    """Спеціалізований маркерний детектор для Telegram Web (t.me/username)."""
+    """
+    Детектор для публічних Telegram-сторінок t.me/username.
+    """
+
     @staticmethod
-    def detect(status_code: int, html_text: str) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
+    def detect(
+        status_code: int,
+        html_text: str,
+    ) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
+
         details = {}
-        if status_code != 200 or not isinstance(html_text, str):
-            if status_code == 429:
-                return StatusEnum.RATE_LIMITED, ConfidenceLevel.MEDIUM, details
-            elif status_code == 403:
-                return StatusEnum.BLOCKED, ConfidenceLevel.MEDIUM, details
-            return StatusEnum.UNKNOWN, ConfidenceLevel.LOW, details
+
+        # Rate limit
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        # Access blocked
+        if status_code == 403:
+            return (
+                StatusEnum.BLOCKED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        # Explicit HTTP 404
+        if status_code == 404:
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                details,
+            )
+
+        # Незрозуміла HTTP-відповідь
+        if status_code != 200:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        # Очікуємо HTML
+        if not isinstance(html_text, str):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
 
         html_lower = html_text.lower()
 
-        # Позитивні докази існування акаунта / каналу / групи:
-        # На існуючих сторінках t.me є елементи tgme_page_title або tgme_page_extra
+        # Позитивні Telegram-маркери
         has_title = 'class="tgme_page_title"' in html_lower
         has_extra = 'class="tgme_page_extra"' in html_lower
-        has_action_button = 'tgme_action_button' in html_lower
 
-        if has_title or has_extra or has_action_button:
-            return StatusEnum.FOUND, ConfidenceLevel.HIGH, details
+        if has_title or has_extra:
+            details["profile_marker"] = (
+                "tgme_page_title"
+                if has_title
+                else "tgme_page_extra"
+            )
 
-        # Якщо позитивних елементів профілю немає
-        return StatusEnum.NOT_FOUND, ConfidenceLevel.HIGH, details
+            return (
+                StatusEnum.FOUND,
+                ConfidenceLevel.HIGH,
+                details,
+            )
+
+        # Немає достатнього доказу ні FOUND, ні NOT_FOUND
+        return (
+            StatusEnum.UNKNOWN,
+            ConfidenceLevel.LOW,
+            details,
+        )
