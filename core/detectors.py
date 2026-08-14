@@ -8,7 +8,11 @@ class BaseDetector:
     def detect(
         status_code: int,
         response_data: Any,
-    ) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
         raise NotImplementedError
 
 
@@ -22,11 +26,13 @@ class StatusCodeDetector(BaseDetector):
     def detect(
         status_code: int,
         response_data: Any,
-    ) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
-
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
         details = {}
 
-        # Rate limit
         if status_code == 429:
             return (
                 StatusEnum.RATE_LIMITED,
@@ -34,7 +40,6 @@ class StatusCodeDetector(BaseDetector):
                 details,
             )
 
-        # Access blocked
         if status_code == 403:
             return (
                 StatusEnum.BLOCKED,
@@ -42,7 +47,6 @@ class StatusCodeDetector(BaseDetector):
                 details,
             )
 
-        # Explicitly missing
         if status_code == 404:
             return (
                 StatusEnum.NOT_FOUND,
@@ -50,15 +54,22 @@ class StatusCodeDetector(BaseDetector):
                 details,
             )
 
-        # Successful API response
         if status_code == 200:
-
-            # API returned a JSON object
             if isinstance(response_data, dict):
                 details["name"] = response_data.get("name")
-                details["username"] = response_data.get("username")
-                details["created_at"] = response_data.get("created_at")
-                details["public_repos"] = response_data.get("public_repos")
+
+                details["username"] = (
+                    response_data.get("username")
+                    or response_data.get("login")
+                )
+
+                details["created_at"] = response_data.get(
+                    "created_at"
+                )
+
+                details["public_repos"] = response_data.get(
+                    "public_repos"
+                )
 
                 return (
                     StatusEnum.FOUND,
@@ -66,10 +77,7 @@ class StatusCodeDetector(BaseDetector):
                     details,
                 )
 
-            # GitLab returns a list
             if isinstance(response_data, list):
-
-                # Empty list = username not found
                 if len(response_data) == 0:
                     return (
                         StatusEnum.NOT_FOUND,
@@ -82,7 +90,9 @@ class StatusCodeDetector(BaseDetector):
                 if isinstance(user, dict):
                     details["name"] = user.get("name")
                     details["username"] = user.get("username")
-                    details["created_at"] = user.get("created_at")
+                    details["created_at"] = user.get(
+                        "created_at"
+                    )
 
                 return (
                     StatusEnum.FOUND,
@@ -90,14 +100,12 @@ class StatusCodeDetector(BaseDetector):
                     details,
                 )
 
-            # HTTP 200, але формат відповіді незрозумілий
             return (
                 StatusEnum.UNKNOWN,
                 ConfidenceLevel.LOW,
                 details,
             )
 
-        # Інші HTTP-коди
         return (
             StatusEnum.UNKNOWN,
             ConfidenceLevel.LOW,
@@ -114,11 +122,13 @@ class TelegramDetector(BaseDetector):
     def detect(
         status_code: int,
         html_text: str,
-    ) -> Tuple[StatusEnum, ConfidenceLevel, Dict[str, Any]]:
-
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
         details = {}
 
-        # Rate limit
         if status_code == 429:
             return (
                 StatusEnum.RATE_LIMITED,
@@ -126,7 +136,6 @@ class TelegramDetector(BaseDetector):
                 details,
             )
 
-        # Access blocked
         if status_code == 403:
             return (
                 StatusEnum.BLOCKED,
@@ -134,7 +143,6 @@ class TelegramDetector(BaseDetector):
                 details,
             )
 
-        # Explicit HTTP 404
         if status_code == 404:
             return (
                 StatusEnum.NOT_FOUND,
@@ -142,7 +150,6 @@ class TelegramDetector(BaseDetector):
                 details,
             )
 
-        # Незрозуміла HTTP-відповідь
         if status_code != 200:
             return (
                 StatusEnum.UNKNOWN,
@@ -150,7 +157,6 @@ class TelegramDetector(BaseDetector):
                 details,
             )
 
-        # Очікуємо HTML
         if not isinstance(html_text, str):
             return (
                 StatusEnum.UNKNOWN,
@@ -160,9 +166,13 @@ class TelegramDetector(BaseDetector):
 
         html_lower = html_text.lower()
 
-        # Позитивні Telegram-маркери
-        has_title = 'class="tgme_page_title"' in html_lower
-        has_extra = 'class="tgme_page_extra"' in html_lower
+        has_title = (
+            'class="tgme_page_title"' in html_lower
+        )
+
+        has_extra = (
+            'class="tgme_page_extra"' in html_lower
+        )
 
         if has_title or has_extra:
             details["profile_marker"] = (
@@ -177,7 +187,6 @@ class TelegramDetector(BaseDetector):
                 details,
             )
 
-        # Немає достатнього доказу ні FOUND, ні NOT_FOUND
         return (
             StatusEnum.UNKNOWN,
             ConfidenceLevel.LOW,

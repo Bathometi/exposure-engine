@@ -3,43 +3,48 @@ from core.schema import StatusEnum, ConfidenceLevel
 
 
 def test_404_is_not_found():
-    status, confidence, details = StatusCodeDetector.detect(
-        404,
-        None,
-    )
+    status, confidence, details = StatusCodeDetector.detect(404, None)
 
     assert status == StatusEnum.NOT_FOUND
     assert confidence == ConfidenceLevel.HIGH
 
 
 def test_403_is_blocked():
-    status, confidence, details = StatusCodeDetector.detect(
-        403,
-        None,
-    )
+    status, confidence, details = StatusCodeDetector.detect(403, None)
 
     assert status == StatusEnum.BLOCKED
     assert confidence == ConfidenceLevel.MEDIUM
 
 
 def test_429_is_rate_limited():
-    status, confidence, details = StatusCodeDetector.detect(
-        429,
-        None,
-    )
+    status, confidence, details = StatusCodeDetector.detect(429, None)
 
     assert status == StatusEnum.RATE_LIMITED
     assert confidence == ConfidenceLevel.MEDIUM
 
 
 def test_gitlab_empty_list_is_not_found():
-    status, confidence, details = StatusCodeDetector.detect(
-        200,
-        [],
-    )
+    status, confidence, details = StatusCodeDetector.detect(200, [])
 
     assert status == StatusEnum.NOT_FOUND
     assert confidence == ConfidenceLevel.HIGH
+
+
+def test_github_login_is_used_as_username():
+    response_data = {
+        "login": "octocat",
+        "name": "The Octocat",
+        "public_repos": 8,
+    }
+
+    status, confidence, details = StatusCodeDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details["username"] == "octocat"
 
 
 def test_telegram_marker_is_found():

@@ -9,6 +9,7 @@ from rich.table import Table
 from core.schema import EntityType, StatusEnum
 from core.normalizer import Normalizer
 from core.collector import HTTPCollector
+from core.reporting import save_json_report
 from config.platforms import PLATFORMS
 
 
@@ -69,6 +70,7 @@ async def scan_target(target_username: str):
     }
 
     collector_errors = 0
+    evidences = []
 
     for result in results:
         if isinstance(result, Exception):
@@ -85,6 +87,7 @@ async def scan_target(target_username: str):
             continue
 
         evidence = result
+        evidences.append(evidence)
 
         status_counts[evidence.status] += 1
 
@@ -207,6 +210,19 @@ async def scan_target(target_username: str):
         )
 
     console.print(summary)
+
+    report_path = save_json_report(
+        entity_type=EntityType.USERNAME,
+        raw_value=target_username,
+        normalized_value=norm_user,
+        evidences=evidences,
+    )
+
+    console.print()
+    console.print(
+        f"[dim]Report saved:[/dim] "
+        f"[cyan]{report_path}[/cyan]"
+    )
     console.print()
 
 

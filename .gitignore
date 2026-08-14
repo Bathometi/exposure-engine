@@ -12,3 +12,6 @@ venv/
 # IDEs
 .vscode/
 .idea/
+
+# Generated OSINT reports
+reports/
