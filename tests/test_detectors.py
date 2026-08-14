@@ -1,4 +1,8 @@
-from core.detectors import StatusCodeDetector, TelegramDetector
+from core.detectors import (
+    HackerNewsDetector,
+    StatusCodeDetector,
+    TelegramDetector,
+)
 from core.schema import StatusEnum, ConfidenceLevel
 
 
@@ -45,6 +49,37 @@ def test_github_login_is_used_as_username():
     assert status == StatusEnum.FOUND
     assert confidence == ConfidenceLevel.HIGH
     assert details["username"] == "octocat"
+
+
+def test_hackernews_user_is_found():
+    response_data = {
+        "id": "pg",
+        "karma": 155000,
+        "created": 1160418092,
+        "about": "Example profile",
+    }
+
+    status, confidence, details = HackerNewsDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details["username"] == "pg"
+    assert details["karma"] == 155000
+    assert details["created_at"] == "2006-10-09T18:21:32+00:00"
+
+
+def test_hackernews_missing_data_is_unknown():
+    status, confidence, details = HackerNewsDetector.detect(
+        200,
+        None,
+    )
+
+    assert status == StatusEnum.UNKNOWN
+    assert confidence == ConfidenceLevel.LOW
+    assert details == {}
 
 
 def test_telegram_marker_is_found():

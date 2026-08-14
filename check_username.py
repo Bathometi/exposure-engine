@@ -1,5 +1,6 @@
 import asyncio
 import sys
+from datetime import datetime
 
 from rich import box
 from rich.console import Console
@@ -24,6 +25,28 @@ STATUS_STYLES = {
     StatusEnum.UNKNOWN: "magenta",
     StatusEnum.ERROR: "bold red",
 }
+
+
+def format_datetime(value):
+    if not value:
+        return None
+
+    try:
+        normalized_value = value.replace(
+            "Z",
+            "+00:00",
+        )
+
+        parsed = datetime.fromisoformat(
+            normalized_value
+        )
+
+        return parsed.strftime(
+            "%Y-%m-%d %H:%M:%S UTC"
+        )
+
+    except (ValueError, TypeError):
+        return str(value)
 
 
 async def scan_target(target_username: str):
@@ -134,21 +157,53 @@ async def scan_target(target_username: str):
             )
 
         if evidence.status == StatusEnum.FOUND:
-            detail_fields = {
-                "username": "Username",
-                "name": "Name",
-                "created_at": "Created At",
-                "public_repos": "Public Repos",
-            }
+            username = evidence.details.get("username")
 
-            for key, label in detail_fields.items():
-                value = evidence.details.get(key)
+            if username is not None:
+                details_table.add_row(
+                    "Username",
+                    str(username),
+                )
 
-                if value is not None:
-                    details_table.add_row(
-                        label,
-                        str(value),
-                    )
+            name = evidence.details.get("name")
+
+            if name is not None:
+                details_table.add_row(
+                    "Name",
+                    str(name),
+                )
+
+            created_at = evidence.details.get("created_at")
+
+            if created_at is not None:
+                details_table.add_row(
+                    "Created At",
+                    format_datetime(created_at),
+                )
+
+            public_repos = evidence.details.get("public_repos")
+
+            if public_repos is not None:
+                details_table.add_row(
+                    "Public Repos",
+                    str(public_repos),
+                )
+
+            karma = evidence.details.get("karma")
+
+            if karma is not None:
+                details_table.add_row(
+                    "Karma",
+                    str(karma),
+                )
+
+            about = evidence.details.get("about")
+
+            if about:
+                details_table.add_row(
+                    "About",
+                    str(about),
+                )
 
         error_message = evidence.details.get("error")
 

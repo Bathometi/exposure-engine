@@ -23,4 +23,9 @@ PLATFORMS = {
         "url_template": "https://t.me/{username}",
         "detector": "telegram",
     },
+
+    "HackerNews": {
+        "url_template": "https://hacker-news.firebaseio.com/v0/user/{username}.json",
+        "detector": "hackernews",
+    },
 }

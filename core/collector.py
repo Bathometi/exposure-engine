@@ -3,7 +3,11 @@ import aiohttp
 from typing import Dict, Any
 
 from core.schema import Evidence, EntityType, StatusEnum, ConfidenceLevel
-from core.detectors import StatusCodeDetector, TelegramDetector
+from core.detectors import (
+    HackerNewsDetector,
+    StatusCodeDetector,
+    TelegramDetector,
+)
 
 
 class HTTPCollector:
@@ -104,12 +108,21 @@ class HTTPCollector:
                             except Exception:
                                 response_data = None
 
-                            status, confidence, parsed_details = (
-                                StatusCodeDetector.detect(
-                                    status_code,
-                                    response_data,
+                            if detector_type == "hackernews":
+                                status, confidence, parsed_details = (
+                                    HackerNewsDetector.detect(
+                                        status_code,
+                                        response_data,
+                                    )
                                 )
-                            )
+
+                            else:
+                                status, confidence, parsed_details = (
+                                    StatusCodeDetector.detect(
+                                        status_code,
+                                        response_data,
+                                    )
+                                )
 
                         parsed_details["target_url"] = url
                         parsed_details["http_status"] = status_code

@@ -13,7 +13,11 @@ def test_all_platforms_have_url_template():
 
 
 def test_all_platforms_have_supported_detector():
-    supported_detectors = {"status_code", "telegram"}
+    supported_detectors = {
+        "status_code",
+        "telegram",
+        "hackernews",
+    }
 
     for platform_name, config in PLATFORMS.items():
         assert config.get("detector") in supported_detectors, (
@@ -23,3 +27,11 @@ def test_all_platforms_have_supported_detector():
 
 def test_telegram_uses_telegram_detector():
     assert PLATFORMS["Telegram"]["detector"] == "telegram"
+
+
+def test_hackernews_uses_hackernews_detector():
+    assert PLATFORMS["HackerNews"]["detector"] == "hackernews"
+
+
+def test_hackernews_has_username_placeholder():
+    assert "{username}" in PLATFORMS["HackerNews"]["url_template"]

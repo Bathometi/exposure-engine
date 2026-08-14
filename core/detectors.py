@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Any, Dict, Tuple
 
 from core.schema import ConfidenceLevel, StatusEnum
@@ -109,6 +110,82 @@ class StatusCodeDetector(BaseDetector):
         return (
             StatusEnum.UNKNOWN,
             ConfidenceLevel.LOW,
+            details,
+        )
+
+
+class HackerNewsDetector(BaseDetector):
+    """
+    Детектор для публічного Hacker News API.
+
+    API показує лише користувачів з публічною активністю.
+    Тому відсутність даних не доводить відсутність акаунта.
+    """
+
+    @staticmethod
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
+        details = {}
+
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 403:
+            return (
+                StatusEnum.BLOCKED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code != 200:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        if not isinstance(response_data, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        username = response_data.get("id")
+
+        if not username:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        details["username"] = username
+        details["karma"] = response_data.get("karma")
+
+        created_timestamp = response_data.get("created")
+
+        if created_timestamp is not None:
+            details["created_at"] = datetime.fromtimestamp(
+                created_timestamp,
+                tz=timezone.utc,
+            ).isoformat()
+
+        details["about"] = response_data.get("about")
+
+        return (
+            StatusEnum.FOUND,
+            ConfidenceLevel.HIGH,
             details,
         )
 
