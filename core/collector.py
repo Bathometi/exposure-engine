@@ -28,6 +28,7 @@ class HTTPCollector:
         url = platform_config["url_template"].format(
             username=normalized_value
         )
+
         detector_type = platform_config.get(
             "detector",
             "status_code",
@@ -53,6 +54,13 @@ class HTTPCollector:
                             504,
                         )
 
+                        server_error_statuses = (
+                            500,
+                            502,
+                            503,
+                            504,
+                        )
+
                         if (
                             status_code in retryable_statuses
                             and attempt < self.max_retries
@@ -60,6 +68,25 @@ class HTTPCollector:
                             delay = 2 ** (attempt + 1)
                             await asyncio.sleep(delay)
                             continue
+
+                        if (
+                            status_code in server_error_statuses
+                            and attempt == self.max_retries
+                        ):
+                            return Evidence(
+                                entity_type=entity_type,
+                                raw_value=raw_value,
+                                normalized_value=normalized_value,
+                                source_name=source_name,
+                                status=StatusEnum.ERROR,
+                                confidence=ConfidenceLevel.LOW,
+                                details={
+                                    "error": "Server error after retries",
+                                    "target_url": url,
+                                    "http_status": status_code,
+                                },
+                                limitations="Maximum retries exhausted.",
+                            )
 
                         if detector_type == "telegram":
                             response_data = await response.text()
