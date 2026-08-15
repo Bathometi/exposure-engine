@@ -2,6 +2,7 @@ from core.detectors import (
     CodebergDetector,
     DevToDetector,
     HackerNewsDetector,
+    KeybaseDetector,
     StatusCodeDetector,
     TelegramDetector,
 )
@@ -30,6 +31,11 @@ DETECTOR_REGISTRY = {
 
     "codeberg": {
         "detector": CodebergDetector,
+        "response_type": "json",
+    },
+
+    "keybase": {
+        "detector": KeybaseDetector,
         "response_type": "json",
     },
 }

@@ -1,4 +1,5 @@
 from core.detectors import (
+    KeybaseDetector,
     DevToDetector,
     HackerNewsDetector,
     StatusCodeDetector,
@@ -202,6 +203,55 @@ def test_codeberg_404_is_not_found():
 
     status, confidence, details = CodebergDetector.detect(
         404,
+        response_data,
+    )
+
+    assert status == StatusEnum.NOT_FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {}
+def test_keybase_user_is_found():
+    response_data = {
+        "status": {
+            "code": 0,
+            "name": "OK",
+        },
+        "them": {
+            "basics": {
+                "username": "max",
+                "ctime": 1391657400,
+            },
+            "profile": {
+                "full_name": "Max Krohn",
+                "location": "New York, NY",
+                "bio": "Keybase.io co-founder and developer",
+            },
+        },
+    }
+
+    status, confidence, details = KeybaseDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details["username"] == "max"
+    assert details["name"] == "Max Krohn"
+    assert details["location"] == "New York, NY"
+    assert details["created_at"] == "2014-02-06T03:30:00+00:00"
+
+
+def test_keybase_api_not_found():
+    response_data = {
+        "status": {
+            "code": 205,
+            "desc": "maxtaco: user not found",
+            "name": "NOT_FOUND",
+        }
+    }
+
+    status, confidence, details = KeybaseDetector.detect(
+        200,
         response_data,
     )
 

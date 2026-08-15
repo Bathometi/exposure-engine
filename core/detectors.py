@@ -439,3 +439,127 @@ class CodebergDetector(BaseDetector):
             ConfidenceLevel.HIGH,
             details,
         )
+class KeybaseDetector(BaseDetector):
+    """
+    Детектор для публічного Keybase API.
+    """
+
+    @staticmethod
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
+        details = {}
+
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 403:
+            return (
+                StatusEnum.BLOCKED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code != 200:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        if not isinstance(response_data, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        api_status = response_data.get("status")
+
+        if not isinstance(api_status, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        status_code_api = api_status.get("code")
+        status_name = api_status.get("name")
+
+        if (
+            status_code_api == 205
+            and status_name == "NOT_FOUND"
+        ):
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                details,
+            )
+
+        if (
+            status_code_api != 0
+            or status_name != "OK"
+        ):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        user_data = response_data.get("them")
+
+        if not isinstance(user_data, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        basics = user_data.get("basics", {})
+        profile = user_data.get("profile", {})
+
+        if not isinstance(basics, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        username = basics.get("username")
+
+        if not username:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        details["username"] = username
+
+        if isinstance(profile, dict):
+            details["name"] = profile.get("full_name")
+            details["location"] = profile.get("location")
+            details["about"] = profile.get("bio")
+
+        created_timestamp = basics.get("ctime")
+
+        if created_timestamp is not None:
+            details["created_at"] = datetime.fromtimestamp(
+                created_timestamp,
+                tz=timezone.utc,
+            ).isoformat()
+
+        return (
+            StatusEnum.FOUND,
+            ConfidenceLevel.HIGH,
+            details,
+        )
