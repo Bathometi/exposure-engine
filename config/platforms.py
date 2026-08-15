@@ -47,4 +47,11 @@ PLATFORMS = {
         ),
         "detector": "devto",
     },
+
+    "Codeberg": {
+        "url_template": (
+            "https://codeberg.org/api/v1/users/{username}"
+        ),
+        "detector": "codeberg",
+    },
 }

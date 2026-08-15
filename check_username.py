@@ -1,6 +1,6 @@
 import asyncio
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 
 from rich import box
 from rich.console import Console
@@ -41,7 +41,11 @@ def format_datetime(value):
             normalized_value
         )
 
-        return parsed.strftime(
+        parsed_utc = parsed.astimezone(
+            timezone.utc
+        )
+
+        return parsed_utc.strftime(
             "%Y-%m-%d %H:%M:%S UTC"
         )
 

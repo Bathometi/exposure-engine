@@ -356,3 +356,86 @@ class TelegramDetector(BaseDetector):
             ConfidenceLevel.LOW,
             details,
         )
+
+class CodebergDetector(BaseDetector):
+    """
+    Детектор для публічного Codeberg API.
+    """
+
+    @staticmethod
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
+        details = {}
+
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 403:
+            return (
+                StatusEnum.BLOCKED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 404:
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                details,
+            )
+
+        if status_code != 200:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        if not isinstance(response_data, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        username = (
+            response_data.get("username")
+            or response_data.get("login")
+        )
+
+        if not username:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        details["username"] = username
+        details["name"] = response_data.get("full_name")
+        details["created_at"] = response_data.get("created")
+        details["website_url"] = response_data.get("website")
+        details["location"] = response_data.get("location")
+        details["about"] = response_data.get("description")
+        details["followers_count"] = response_data.get(
+            "followers_count"
+        )
+        details["following_count"] = response_data.get(
+            "following_count"
+        )
+        details["visibility"] = response_data.get("visibility")
+
+        return (
+            StatusEnum.FOUND,
+            ConfidenceLevel.HIGH,
+            details,
+        )

@@ -8,7 +8,8 @@ def test_all_platforms_have_url_template():
         )
 
         assert "{username}" in config["url_template"], (
-            f"{platform_name} url_template has no {{username}} placeholder"
+            f"{platform_name} url_template has no "
+            f"{{username}} placeholder"
         )
 
 
@@ -18,6 +19,7 @@ def test_all_platforms_have_supported_detector():
         "telegram",
         "hackernews",
         "devto",
+        "codeberg",
     }
 
     for platform_name, config in PLATFORMS.items():
@@ -27,20 +29,49 @@ def test_all_platforms_have_supported_detector():
 
 
 def test_telegram_uses_telegram_detector():
-    assert PLATFORMS["Telegram"]["detector"] == "telegram"
+    assert (
+        PLATFORMS["Telegram"]["detector"]
+        == "telegram"
+    )
 
 
 def test_hackernews_uses_hackernews_detector():
-    assert PLATFORMS["HackerNews"]["detector"] == "hackernews"
+    assert (
+        PLATFORMS["HackerNews"]["detector"]
+        == "hackernews"
+    )
 
 
 def test_hackernews_has_username_placeholder():
-    assert "{username}" in PLATFORMS["HackerNews"]["url_template"]
+    assert (
+        "{username}"
+        in PLATFORMS["HackerNews"]["url_template"]
+    )
 
 
 def test_devto_uses_devto_detector():
-    assert PLATFORMS["DevTo"]["detector"] == "devto"
+    assert (
+        PLATFORMS["DevTo"]["detector"]
+        == "devto"
+    )
 
 
 def test_devto_has_username_placeholder():
-    assert "{username}" in PLATFORMS["DevTo"]["url_template"]
+    assert (
+        "{username}"
+        in PLATFORMS["DevTo"]["url_template"]
+    )
+
+
+def test_codeberg_uses_codeberg_detector():
+    assert (
+        PLATFORMS["Codeberg"]["detector"]
+        == "codeberg"
+    )
+
+
+def test_codeberg_has_username_placeholder():
+    assert (
+        "{username}"
+        in PLATFORMS["Codeberg"]["url_template"]
+    )

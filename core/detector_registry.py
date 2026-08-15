@@ -1,4 +1,5 @@
 from core.detectors import (
+    CodebergDetector,
     DevToDetector,
     HackerNewsDetector,
     StatusCodeDetector,
@@ -24,6 +25,11 @@ DETECTOR_REGISTRY = {
 
     "devto": {
         "detector": DevToDetector,
+        "response_type": "json",
+    },
+
+    "codeberg": {
+        "detector": CodebergDetector,
         "response_type": "json",
     },
 }

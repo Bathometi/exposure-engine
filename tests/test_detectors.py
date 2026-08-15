@@ -156,3 +156,55 @@ def test_telegram_without_marker_is_unknown():
 
     assert status == StatusEnum.UNKNOWN
     assert confidence == ConfidenceLevel.LOW
+from core.detectors import CodebergDetector
+
+
+def test_codeberg_user_is_found():
+    response_data = {
+        "id": 70422,
+        "login": "forgejo",
+        "username": "forgejo",
+        "full_name": "Forgejo",
+        "created": "2022-11-06T07:18:11+01:00",
+        "website": "https://forgejo.org",
+        "location": "",
+        "description": "Beyond coding. We forge.",
+        "visibility": "public",
+        "followers_count": 586,
+        "following_count": 0,
+    }
+
+    status, confidence, details = CodebergDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.FOUND
+    assert confidence == ConfidenceLevel.HIGH
+
+    assert details["username"] == "forgejo"
+    assert details["name"] == "Forgejo"
+    assert details["created_at"] == (
+        "2022-11-06T07:18:11+01:00"
+    )
+    assert details["website_url"] == "https://forgejo.org"
+    assert details["about"] == "Beyond coding. We forge."
+    assert details["visibility"] == "public"
+
+
+def test_codeberg_404_is_not_found():
+    response_data = {
+        "message": (
+            "user redirect does not exist "
+            "[name: qzxvbnm847362910]"
+        )
+    }
+
+    status, confidence, details = CodebergDetector.detect(
+        404,
+        response_data,
+    )
+
+    assert status == StatusEnum.NOT_FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {}

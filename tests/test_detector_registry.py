@@ -2,12 +2,12 @@ from config.platforms import PLATFORMS
 
 from core.detector_registry import DETECTOR_REGISTRY
 from core.detectors import (
+    CodebergDetector,
     DevToDetector,
     HackerNewsDetector,
     StatusCodeDetector,
     TelegramDetector,
 )
-
 
 def test_registry_maps_detectors_correctly():
     assert (
@@ -62,3 +62,13 @@ def test_all_platform_detectors_are_registered():
             f"{platform_name} uses detector "
             f"'{detector_name}' which is not registered"
         )
+def test_codeberg_is_registered_correctly():
+    assert (
+        DETECTOR_REGISTRY["codeberg"]["detector"]
+        is CodebergDetector
+    )
+
+    assert (
+        DETECTOR_REGISTRY["codeberg"]["response_type"]
+        == "json"
+    )
