@@ -11,7 +11,7 @@ from core.schema import (
     StatusEnum,
 )
 
-
+@pytest.mark.integration
 @pytest.mark.asyncio
 async def test_check_platform_github():
     collector = HTTPCollector(
