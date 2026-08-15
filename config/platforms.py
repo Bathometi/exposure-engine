@@ -5,17 +5,25 @@ PLATFORMS = {
     },
 
     "GitLab": {
-        "url_template": "https://gitlab.com/api/v4/users?username={username}",
+        "url_template": (
+            "https://gitlab.com/api/v4/users"
+            "?username={username}"
+        ),
         "detector": "status_code",
     },
 
     "DockerHub": {
-        "url_template": "https://hub.docker.com/v2/users/{username}",
+        "url_template": (
+            "https://hub.docker.com/v2/users/{username}"
+        ),
         "detector": "status_code",
     },
 
     "Reddit": {
-        "url_template": "https://www.reddit.com/user/{username}/about.json",
+        "url_template": (
+            "https://www.reddit.com/user/"
+            "{username}/about.json"
+        ),
         "detector": "status_code",
     },
 
@@ -25,7 +33,18 @@ PLATFORMS = {
     },
 
     "HackerNews": {
-        "url_template": "https://hacker-news.firebaseio.com/v0/user/{username}.json",
+        "url_template": (
+            "https://hacker-news.firebaseio.com/"
+            "v0/user/{username}.json"
+        ),
         "detector": "hackernews",
+    },
+
+    "DevTo": {
+        "url_template": (
+            "https://dev.to/api/users/"
+            "by_username?url={username}"
+        ),
+        "detector": "devto",
     },
 }

@@ -4,6 +4,7 @@ from typing import Dict, Any
 
 from core.schema import Evidence, EntityType, StatusEnum, ConfidenceLevel
 from core.detectors import (
+    DevToDetector,
     HackerNewsDetector,
     StatusCodeDetector,
     TelegramDetector,
@@ -111,6 +112,14 @@ class HTTPCollector:
                             if detector_type == "hackernews":
                                 status, confidence, parsed_details = (
                                     HackerNewsDetector.detect(
+                                        status_code,
+                                        response_data,
+                                    )
+                                )
+
+                            elif detector_type == "devto":
+                                status, confidence, parsed_details = (
+                                    DevToDetector.detect(
                                         status_code,
                                         response_data,
                                     )

@@ -17,6 +17,7 @@ def test_all_platforms_have_supported_detector():
         "status_code",
         "telegram",
         "hackernews",
+        "devto",
     }
 
     for platform_name, config in PLATFORMS.items():
@@ -35,3 +36,11 @@ def test_hackernews_uses_hackernews_detector():
 
 def test_hackernews_has_username_placeholder():
     assert "{username}" in PLATFORMS["HackerNews"]["url_template"]
+
+
+def test_devto_uses_devto_detector():
+    assert PLATFORMS["DevTo"]["detector"] == "devto"
+
+
+def test_devto_has_username_placeholder():
+    assert "{username}" in PLATFORMS["DevTo"]["url_template"]

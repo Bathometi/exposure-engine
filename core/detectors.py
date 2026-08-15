@@ -190,6 +190,93 @@ class HackerNewsDetector(BaseDetector):
         )
 
 
+class DevToDetector(BaseDetector):
+    """
+    Детектор для публічного DEV Community API.
+    """
+
+    @staticmethod
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
+        details = {}
+
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 403:
+            return (
+                StatusEnum.BLOCKED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 404:
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                details,
+            )
+
+        if status_code != 200:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        if not isinstance(response_data, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        if response_data.get("type_of") != "user":
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        username = response_data.get("username")
+
+        if not username:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        details["username"] = username
+        details["name"] = response_data.get("name")
+        details["created_at"] = response_data.get("joined_at")
+        details["github_username"] = response_data.get(
+            "github_username"
+        )
+        details["twitter_username"] = response_data.get(
+            "twitter_username"
+        )
+        details["location"] = response_data.get("location")
+        details["website_url"] = response_data.get("website_url")
+        details["summary"] = response_data.get("summary")
+
+        return (
+            StatusEnum.FOUND,
+            ConfidenceLevel.HIGH,
+            details,
+        )
+
+
 class TelegramDetector(BaseDetector):
     """
     Детектор для публічних Telegram-сторінок t.me/username.

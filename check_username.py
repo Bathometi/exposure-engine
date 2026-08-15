@@ -32,14 +32,8 @@ def format_datetime(value):
         return None
 
     try:
-        normalized_value = value.replace(
-            "Z",
-            "+00:00",
-        )
-
-        parsed = datetime.fromisoformat(
-            normalized_value
-        )
+        normalized_value = value.replace("Z", "+00:00")
+        parsed = datetime.fromisoformat(normalized_value)
 
         return parsed.strftime(
             "%Y-%m-%d %H:%M:%S UTC"
@@ -49,35 +43,52 @@ def format_datetime(value):
         return str(value)
 
 
-async def scan_target(target_username: str):
-    norm_user = Normalizer.normalize_username(target_username)
+def add_detail_row(
+    table: Table,
+    label: str,
+    value,
+):
+    """
+    Додає рядок у CLI лише тоді,
+    коли значення реально існує.
+    """
 
-    header = (
-        f"[bold]Target:[/bold]      {target_username}\n"
-        f"[bold]Normalized:[/bold]  {norm_user}\n"
-        f"[bold]Platforms:[/bold]   {len(PLATFORMS)}"
+    if value is not None and value != "":
+        table.add_row(label, str(value))
+
+
+async def scan_username(raw_username: str):
+    normalized_username = Normalizer.normalize(
+        EntityType.USERNAME,
+        raw_username,
     )
 
-    console.print()
+    collector = HTTPCollector()
+
     console.print(
         Panel(
-            header,
-            title="[bold cyan]EXPOSURE ENGINE[/bold cyan]",
+            (
+                f"[bold]Target:[/bold]      "
+                f"{raw_username}\n"
+                f"[bold]Normalized:[/bold]  "
+                f"{normalized_username}\n"
+                f"[bold]Platforms:[/bold]   "
+                f"{len(PLATFORMS)}"
+            ),
+            title="EXPOSURE ENGINE",
             border_style="cyan",
         )
     )
 
-    collector = HTTPCollector(timeout_seconds=5)
-
     tasks = []
 
-    for platform_name, config in PLATFORMS.items():
+    for source_name, platform_config in PLATFORMS.items():
         task = collector.check_platform(
             entity_type=EntityType.USERNAME,
-            raw_value=target_username,
-            normalized_value=norm_user,
-            source_name=platform_name,
-            platform_config=config,
+            raw_value=raw_username,
+            normalized_value=normalized_username,
+            source_name=source_name,
+            platform_config=platform_config,
         )
 
         tasks.append(task)
@@ -87,208 +98,208 @@ async def scan_target(target_username: str):
         return_exceptions=True,
     )
 
-    status_counts = {
-        status: 0
-        for status in StatusEnum
-    }
+    evidence_results = []
 
-    collector_errors = 0
-    evidences = []
-
-    for result in results:
+    for source_name, result in zip(
+        PLATFORMS.keys(),
+        results,
+    ):
         if isinstance(result, Exception):
-            collector_errors += 1
-
             console.print(
                 Panel(
-                    f"[red]{result}[/red]",
-                    title="[bold red]COLLECTOR ERROR[/bold red]",
+                    f"[bold red]ERROR[/bold red]\n{result}",
+                    title=source_name,
                     border_style="red",
                 )
             )
-
             continue
 
-        evidence = result
-        evidences.append(evidence)
-
-        status_counts[evidence.status] += 1
+        evidence_results.append(result)
 
         style = STATUS_STYLES.get(
-            evidence.status,
+            result.status,
             "white",
         )
 
-        details_table = Table.grid(
-            padding=(0, 2),
+        table = Table(
+            show_header=False,
+            box=None,
+            padding=(0, 1),
         )
 
-        details_table.add_column(
+        table.add_column(
+            "Field",
             style="bold",
-            width=13,
+            no_wrap=True,
         )
 
-        details_table.add_column()
+        table.add_column("Value")
 
-        details_table.add_row(
+        table.add_row(
             "Status",
-            f"[{style}]{evidence.status.value.upper()}[/{style}]",
+            f"[{style}]"
+            f"{result.status.value.upper()}"
+            f"[/{style}]",
         )
 
-        details_table.add_row(
+        table.add_row(
             "Confidence",
-            evidence.confidence.value.upper(),
+            result.confidence.value.upper(),
         )
 
-        http_status = evidence.details.get("http_status")
+        details = result.details
 
-        if http_status is not None:
-            details_table.add_row(
-                "HTTP",
-                str(http_status),
+        add_detail_row(
+            table,
+            "HTTP",
+            details.get("http_status"),
+        )
+
+        add_detail_row(
+            table,
+            "URL",
+            details.get("target_url"),
+        )
+
+        if result.status == StatusEnum.FOUND:
+            add_detail_row(
+                table,
+                "Username",
+                details.get("username"),
             )
 
-        target_url = evidence.details.get("target_url")
-
-        if target_url:
-            details_table.add_row(
-                "URL",
-                target_url,
+            add_detail_row(
+                table,
+                "Name",
+                details.get("name"),
             )
 
-        if evidence.status == StatusEnum.FOUND:
-            username = evidence.details.get("username")
+            created_at = details.get("created_at")
 
-            if username is not None:
-                details_table.add_row(
-                    "Username",
-                    str(username),
-                )
-
-            name = evidence.details.get("name")
-
-            if name is not None:
-                details_table.add_row(
-                    "Name",
-                    str(name),
-                )
-
-            created_at = evidence.details.get("created_at")
-
-            if created_at is not None:
-                details_table.add_row(
+            if created_at:
+                add_detail_row(
+                    table,
                     "Created At",
                     format_datetime(created_at),
                 )
 
-            public_repos = evidence.details.get("public_repos")
-
-            if public_repos is not None:
-                details_table.add_row(
-                    "Public Repos",
-                    str(public_repos),
-                )
-
-            karma = evidence.details.get("karma")
-
-            if karma is not None:
-                details_table.add_row(
-                    "Karma",
-                    str(karma),
-                )
-
-            about = evidence.details.get("about")
-
-            if about:
-                details_table.add_row(
-                    "About",
-                    str(about),
-                )
-
-        error_message = evidence.details.get("error")
-
-        if error_message:
-            details_table.add_row(
-                "Error",
-                f"[red]{error_message}[/red]",
+            add_detail_row(
+                table,
+                "Public Repos",
+                details.get("public_repos"),
             )
 
-        if evidence.limitations:
-            details_table.add_row(
-                "Note",
-                evidence.limitations,
+            add_detail_row(
+                table,
+                "GitHub Username",
+                details.get("github_username"),
             )
+
+            add_detail_row(
+                table,
+                "Location",
+                details.get("location"),
+            )
+
+            add_detail_row(
+                table,
+                "Website",
+                details.get("website_url"),
+            )
+
+            add_detail_row(
+                table,
+                "Karma",
+                details.get("karma"),
+            )
+
+            add_detail_row(
+                table,
+                "About",
+                details.get("about"),
+            )
+
+        add_detail_row(
+            table,
+            "Note",
+            result.limitations,
+        )
 
         console.print(
             Panel(
-                details_table,
-                title=(
-                    f"[{style}]"
-                    f"{evidence.source_name}"
-                    f"[/{style}]"
-                ),
+                table,
+                title=source_name,
                 border_style=style,
             )
         )
 
-    summary = Table(
+    summary_table = Table(
         title="SCAN SUMMARY",
         box=box.ROUNDED,
-        header_style="bold cyan",
     )
 
-    summary.add_column(
-        "Status",
-        style="bold",
-    )
-
-    summary.add_column(
+    summary_table.add_column("Status")
+    summary_table.add_column(
         "Count",
         justify="right",
     )
 
-    for status in StatusEnum:
-        style = STATUS_STYLES.get(
-            status,
-            "white",
+    for status in [
+        StatusEnum.FOUND,
+        StatusEnum.NOT_FOUND,
+        StatusEnum.RATE_LIMITED,
+        StatusEnum.BLOCKED,
+        StatusEnum.UNKNOWN,
+        StatusEnum.ERROR,
+    ]:
+        count = sum(
+            1
+            for result in evidence_results
+            if result.status == status
         )
 
-        summary.add_row(
-            f"[{style}]{status.value.upper()}[/{style}]",
-            str(status_counts[status]),
+        summary_table.add_row(
+            status.value.upper(),
+            str(count),
         )
 
-    if collector_errors:
-        summary.add_row(
-            "[bold red]COLLECTOR ERROR[/bold red]",
-            str(collector_errors),
-        )
-
-    console.print(summary)
+    console.print(summary_table)
 
     report_path = save_json_report(
         entity_type=EntityType.USERNAME,
-        raw_value=target_username,
-        normalized_value=norm_user,
-        evidences=evidences,
+        raw_value=raw_username,
+        normalized_value=normalized_username,
+        evidences=evidence_results,
     )
 
-    console.print()
     console.print(
-        f"[dim]Report saved:[/dim] "
-        f"[cyan]{report_path}[/cyan]"
+        f"\n[green]Report saved:[/green] "
+        f"{report_path}"
     )
-    console.print()
+
+
+def main():
+    try:
+        raw_username = input(
+            "Введи username для пошуку: "
+        ).strip()
+
+        if not raw_username:
+            console.print(
+                "[red]Username не може бути порожнім.[/red]"
+            )
+            sys.exit(1)
+
+        asyncio.run(
+            scan_username(raw_username)
+        )
+
+    except KeyboardInterrupt:
+        console.print(
+            "\n[yellow]Scan cancelled.[/yellow]"
+        )
+        sys.exit(0)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        username_to_check = sys.argv[1]
-    else:
-        username_to_check = console.input(
-            "[bold cyan]Введи username для пошуку:[/bold cyan] "
-        )
-
-    asyncio.run(
-        scan_target(username_to_check)
-    )
+    main()
