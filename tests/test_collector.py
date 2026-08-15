@@ -151,3 +151,11 @@ async def test_invalid_response_type_returns_error(
         evidence.details["error"]
         == "Unsupported response type: xml"
     )
+
+
+@pytest.mark.asyncio
+async def test_collector_supports_async_context_manager():
+    async with HTTPCollector() as collector:
+        assert collector.session is not None
+
+    assert collector.session is None

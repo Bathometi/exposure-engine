@@ -1,14 +1,16 @@
 import asyncio
-import aiohttp
-from typing import Dict, Any
+from contextlib import asynccontextmanager
+from typing import Any, Dict
 
-from core.schema import (
-    Evidence,
-    EntityType,
-    StatusEnum,
-    ConfidenceLevel,
-)
+import aiohttp
+
 from core.detector_registry import DETECTOR_REGISTRY
+from core.schema import (
+    ConfidenceLevel,
+    EntityType,
+    Evidence,
+    StatusEnum,
+)
 
 
 class HTTPCollector:
@@ -29,6 +31,59 @@ class HTTPCollector:
                 "OSINT-Exposure-Engine/1.0"
             )
         }
+
+        # Shared session.
+        # Поки Collector не відкритий через async with,
+        # тут зберігається None.
+        self.session = None
+
+    async def __aenter__(self):
+        """
+        Відкриває одну shared ClientSession
+        для всього життєвого циклу Collector.
+        """
+
+        self.session = aiohttp.ClientSession(
+            headers=self.headers,
+            timeout=self.timeout,
+        )
+
+        return self
+
+    async def __aexit__(
+        self,
+        exc_type,
+        exc,
+        traceback,
+    ):
+        """
+        Гарантовано закриває shared session
+        після завершення роботи Collector.
+        """
+
+        if self.session is not None:
+            await self.session.close()
+            self.session = None
+
+    @asynccontextmanager
+    async def _session_scope(self):
+        """
+        Якщо shared session вже відкрита —
+        використовуємо її.
+
+        Якщо Collector викликаний старим способом
+        без async with — тимчасово створюємо session.
+        """
+
+        if self.session is not None:
+            yield self.session
+            return
+
+        async with aiohttp.ClientSession(
+            headers=self.headers,
+            timeout=self.timeout,
+        ) as session:
+            yield session
 
     async def check_platform(
         self,
@@ -82,10 +137,7 @@ class HTTPCollector:
             self.max_retries + 1
         ):
             try:
-                async with aiohttp.ClientSession(
-                    headers=self.headers,
-                    timeout=self.timeout,
-                ) as session:
+                async with self._session_scope() as session:
 
                     async with session.get(
                         url,
@@ -168,6 +220,7 @@ class HTTPCollector:
                                 response_data = (
                                     await response.json()
                                 )
+
                             except Exception:
                                 response_data = None
 

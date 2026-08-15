@@ -7,11 +7,11 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from core.schema import EntityType, StatusEnum
-from core.normalizer import Normalizer
-from core.collector import HTTPCollector
-from core.reporting import save_json_report
 from config.platforms import PLATFORMS
+from core.collector import HTTPCollector
+from core.normalizer import Normalizer
+from core.reporting import save_json_report
+from core.schema import EntityType, StatusEnum
 
 
 console = Console()
@@ -32,8 +32,14 @@ def format_datetime(value):
         return None
 
     try:
-        normalized_value = value.replace("Z", "+00:00")
-        parsed = datetime.fromisoformat(normalized_value)
+        normalized_value = value.replace(
+            "Z",
+            "+00:00",
+        )
+
+        parsed = datetime.fromisoformat(
+            normalized_value
+        )
 
         return parsed.strftime(
             "%Y-%m-%d %H:%M:%S UTC"
@@ -54,16 +60,19 @@ def add_detail_row(
     """
 
     if value is not None and value != "":
-        table.add_row(label, str(value))
+        table.add_row(
+            label,
+            str(value),
+        )
 
 
-async def scan_username(raw_username: str):
+async def scan_username(
+    raw_username: str,
+):
     normalized_username = Normalizer.normalize(
         EntityType.USERNAME,
         raw_username,
     )
-
-    collector = HTTPCollector()
 
     console.print(
         Panel(
@@ -80,41 +89,63 @@ async def scan_username(raw_username: str):
         )
     )
 
-    tasks = []
+    # Одна shared ClientSession
+    # для всього scan.
+    async with HTTPCollector() as collector:
+        tasks = []
 
-    for source_name, platform_config in PLATFORMS.items():
-        task = collector.check_platform(
-            entity_type=EntityType.USERNAME,
-            raw_value=raw_username,
-            normalized_value=normalized_username,
-            source_name=source_name,
-            platform_config=platform_config,
+        for (
+            source_name,
+            platform_config,
+        ) in PLATFORMS.items():
+
+            task = collector.check_platform(
+                entity_type=EntityType.USERNAME,
+                raw_value=raw_username,
+                normalized_value=normalized_username,
+                source_name=source_name,
+                platform_config=platform_config,
+            )
+
+            tasks.append(task)
+
+        # Важливо:
+        # усі HTTP-запити завершуються,
+        # поки shared session ще відкрита.
+        results = await asyncio.gather(
+            *tasks,
+            return_exceptions=True,
         )
 
-        tasks.append(task)
-
-    results = await asyncio.gather(
-        *tasks,
-        return_exceptions=True,
-    )
-
+    # Тут async with уже завершився.
+    # Shared ClientSession закрита.
+    # Але Evidence/results уже зібрані.
     evidence_results = []
 
     for source_name, result in zip(
         PLATFORMS.keys(),
         results,
     ):
-        if isinstance(result, Exception):
+        if isinstance(
+            result,
+            Exception,
+        ):
             console.print(
                 Panel(
-                    f"[bold red]ERROR[/bold red]\n{result}",
+                    (
+                        "[bold red]ERROR[/bold red]"
+                        f"\n{result}"
+                    ),
                     title=source_name,
                     border_style="red",
                 )
             )
+
             continue
 
-        evidence_results.append(result)
+        evidence_results.append(
+            result
+        )
 
         style = STATUS_STYLES.get(
             result.status,
@@ -133,13 +164,17 @@ async def scan_username(raw_username: str):
             no_wrap=True,
         )
 
-        table.add_column("Value")
+        table.add_column(
+            "Value"
+        )
 
         table.add_row(
             "Status",
-            f"[{style}]"
-            f"{result.status.value.upper()}"
-            f"[/{style}]",
+            (
+                f"[{style}]"
+                f"{result.status.value.upper()}"
+                f"[/{style}]"
+            ),
         )
 
         table.add_row(
@@ -152,71 +187,95 @@ async def scan_username(raw_username: str):
         add_detail_row(
             table,
             "HTTP",
-            details.get("http_status"),
+            details.get(
+                "http_status"
+            ),
         )
 
         add_detail_row(
             table,
             "URL",
-            details.get("target_url"),
+            details.get(
+                "target_url"
+            ),
         )
 
         if result.status == StatusEnum.FOUND:
             add_detail_row(
                 table,
                 "Username",
-                details.get("username"),
+                details.get(
+                    "username"
+                ),
             )
 
             add_detail_row(
                 table,
                 "Name",
-                details.get("name"),
+                details.get(
+                    "name"
+                ),
             )
 
-            created_at = details.get("created_at")
+            created_at = details.get(
+                "created_at"
+            )
 
             if created_at:
                 add_detail_row(
                     table,
                     "Created At",
-                    format_datetime(created_at),
+                    format_datetime(
+                        created_at
+                    ),
                 )
 
             add_detail_row(
                 table,
                 "Public Repos",
-                details.get("public_repos"),
+                details.get(
+                    "public_repos"
+                ),
             )
 
             add_detail_row(
                 table,
                 "GitHub Username",
-                details.get("github_username"),
+                details.get(
+                    "github_username"
+                ),
             )
 
             add_detail_row(
                 table,
                 "Location",
-                details.get("location"),
+                details.get(
+                    "location"
+                ),
             )
 
             add_detail_row(
                 table,
                 "Website",
-                details.get("website_url"),
+                details.get(
+                    "website_url"
+                ),
             )
 
             add_detail_row(
                 table,
                 "Karma",
-                details.get("karma"),
+                details.get(
+                    "karma"
+                ),
             )
 
             add_detail_row(
                 table,
                 "About",
-                details.get("about"),
+                details.get(
+                    "about"
+                ),
             )
 
         add_detail_row(
@@ -238,7 +297,10 @@ async def scan_username(raw_username: str):
         box=box.ROUNDED,
     )
 
-    summary_table.add_column("Status")
+    summary_table.add_column(
+        "Status"
+    )
+
     summary_table.add_column(
         "Count",
         justify="right",
@@ -263,7 +325,9 @@ async def scan_username(raw_username: str):
             str(count),
         )
 
-    console.print(summary_table)
+    console.print(
+        summary_table
+    )
 
     report_path = save_json_report(
         entity_type=EntityType.USERNAME,
@@ -286,18 +350,29 @@ def main():
 
         if not raw_username:
             console.print(
-                "[red]Username не може бути порожнім.[/red]"
+                (
+                    "[red]Username не може "
+                    "бути порожнім.[/red]"
+                )
             )
+
             sys.exit(1)
 
         asyncio.run(
-            scan_username(raw_username)
+            scan_username(
+                raw_username
+            )
         )
 
     except KeyboardInterrupt:
         console.print(
-            "\n[yellow]Scan cancelled.[/yellow]"
+            (
+                "\n[yellow]"
+                "Scan cancelled."
+                "[/yellow]"
+            )
         )
+
         sys.exit(0)
 
 
