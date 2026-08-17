@@ -5,6 +5,7 @@ from core.detectors import (
     CodebergDetector,
     DevToDetector,
     HackerNewsDetector,
+    HuggingFaceDetector,
     KeybaseDetector,
     LichessDetector,
     StatusCodeDetector,
@@ -99,5 +100,17 @@ def test_lichess_is_registered_correctly():
 
     assert (
         DETECTOR_REGISTRY["lichess"]["response_type"]
+        == "json"
+    )
+
+
+def test_huggingface_is_registered_correctly():
+    assert (
+        DETECTOR_REGISTRY["huggingface"]["detector"]
+        is HuggingFaceDetector
+    )
+
+    assert (
+        DETECTOR_REGISTRY["huggingface"]["response_type"]
         == "json"
     )

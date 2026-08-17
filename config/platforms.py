@@ -71,4 +71,12 @@ PLATFORMS = {
         ),
         "detector": "lichess",
     },
+
+    "HuggingFace": {
+        "url_template": (
+            "https://huggingface.co/api/users/"
+            "{username}/overview"
+        ),
+        "detector": "huggingface",
+    },
 }

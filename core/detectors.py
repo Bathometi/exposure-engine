@@ -635,3 +635,93 @@ class LichessDetector(BaseDetector):
             ConfidenceLevel.HIGH,
             details,
         )
+
+
+class HuggingFaceDetector(BaseDetector):
+    """
+    Detector for public Hugging Face user profiles.
+    """
+
+    @staticmethod
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
+        details = {}
+
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 403:
+            return (
+                StatusEnum.BLOCKED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 404:
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                details,
+            )
+
+        if status_code != 200:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        if not isinstance(response_data, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        if response_data.get("type") != "user":
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        username = response_data.get("user")
+
+        if not username:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        details["username"] = username
+
+        optional_fields = {
+            "name": response_data.get("fullname"),
+            "created_at": response_data.get("createdAt"),
+            "about": response_data.get("details"),
+            "num_models": response_data.get("numModels"),
+            "num_datasets": response_data.get("numDatasets"),
+            "num_spaces": response_data.get("numSpaces"),
+            "num_followers": response_data.get("numFollowers"),
+        }
+
+        for key, value in optional_fields.items():
+            if value is not None and value != "":
+                details[key] = value
+
+        return (
+            StatusEnum.FOUND,
+            ConfidenceLevel.HIGH,
+            details,
+        )

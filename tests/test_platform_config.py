@@ -22,6 +22,7 @@ def test_all_platforms_have_supported_detector():
         "codeberg",
         "keybase",
         "lichess",
+        "huggingface",
     }
 
     for platform_name, config in PLATFORMS.items():
@@ -104,4 +105,18 @@ def test_lichess_has_username_placeholder():
     assert (
         "{username}"
         in PLATFORMS["Lichess"]["url_template"]
+    )
+
+
+def test_huggingface_uses_huggingface_detector():
+    assert (
+        PLATFORMS["HuggingFace"]["detector"]
+        == "huggingface"
+    )
+
+
+def test_huggingface_has_username_placeholder():
+    assert (
+        "{username}"
+        in PLATFORMS["HuggingFace"]["url_template"]
     )

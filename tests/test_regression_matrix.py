@@ -115,6 +115,17 @@ from core.schema import ConfidenceLevel, StatusEnum
             StatusEnum.FOUND,
             ConfidenceLevel.HIGH,
         ),
+        (
+            "HuggingFace",
+            200,
+            {
+                "user": "osanseviero",
+                "type": "user",
+                "fullname": "Omar Sanseviero",
+            },
+            StatusEnum.FOUND,
+            ConfidenceLevel.HIGH,
+        ),
     ],
 )
 def test_platform_regression_matrix(
@@ -226,6 +237,15 @@ def test_platform_regression_matrix(
             404,
             {
                 "error": "Not found",
+            },
+            StatusEnum.NOT_FOUND,
+            ConfidenceLevel.HIGH,
+        ),
+        (
+            "HuggingFace",
+            404,
+            {
+                "error": "This user does not exist",
             },
             StatusEnum.NOT_FOUND,
             ConfidenceLevel.HIGH,

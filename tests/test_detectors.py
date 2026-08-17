@@ -3,6 +3,7 @@ from core.detectors import (
     LichessDetector,
     DevToDetector,
     HackerNewsDetector,
+    HuggingFaceDetector,
     StatusCodeDetector,
     TelegramDetector,
 )
@@ -289,4 +290,67 @@ def test_lichess_404_is_not_found():
 
     assert status == StatusEnum.NOT_FOUND
     assert confidence == ConfidenceLevel.HIGH
+    assert details == {}
+
+
+def test_huggingface_user_is_found():
+    response_data = {
+        "user": "osanseviero",
+        "type": "user",
+        "fullname": "Omar Sanseviero",
+        "createdAt": "2021-02-21T15:45:50.000Z",
+        "details": "Llamas, model merging, massive ASR for data",
+        "numModels": 302,
+        "numDatasets": 39,
+        "numSpaces": 179,
+        "numFollowers": 3494,
+    }
+
+    status, confidence, details = HuggingFaceDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details["username"] == "osanseviero"
+    assert details["name"] == "Omar Sanseviero"
+    assert details["created_at"] == "2021-02-21T15:45:50.000Z"
+    assert details["about"] == (
+        "Llamas, model merging, massive ASR for data"
+    )
+    assert details["num_models"] == 302
+    assert details["num_datasets"] == 39
+    assert details["num_spaces"] == 179
+    assert details["num_followers"] == 3494
+
+
+def test_huggingface_404_is_not_found():
+    response_data = {
+        "error": "This user does not exist",
+    }
+
+    status, confidence, details = HuggingFaceDetector.detect(
+        404,
+        response_data,
+    )
+
+    assert status == StatusEnum.NOT_FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {}
+
+
+def test_huggingface_200_without_user_markers_is_unknown():
+    response_data = {
+        "type": "organization",
+        "user": "example",
+    }
+
+    status, confidence, details = HuggingFaceDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.UNKNOWN
+    assert confidence == ConfidenceLevel.LOW
     assert details == {}

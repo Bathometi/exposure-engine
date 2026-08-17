@@ -2,6 +2,7 @@ from core.detectors import (
     CodebergDetector,
     DevToDetector,
     HackerNewsDetector,
+    HuggingFaceDetector,
     KeybaseDetector,
     LichessDetector,
     StatusCodeDetector,
@@ -42,6 +43,11 @@ DETECTOR_REGISTRY = {
 
     "lichess": {
         "detector": LichessDetector,
+        "response_type": "json",
+    },
+
+    "huggingface": {
+        "detector": HuggingFaceDetector,
         "response_type": "json",
     },
 }
