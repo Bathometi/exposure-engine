@@ -563,3 +563,75 @@ class KeybaseDetector(BaseDetector):
             ConfidenceLevel.HIGH,
             details,
         )
+
+
+class LichessDetector(BaseDetector):
+    """
+    Детектор для публічного Lichess API.
+    """
+
+    @staticmethod
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
+        details = {}
+
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 403:
+            return (
+                StatusEnum.BLOCKED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 404:
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                details,
+            )
+
+        if status_code != 200:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        if not isinstance(response_data, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        username = (
+            response_data.get("username")
+            or response_data.get("id")
+        )
+
+        if not username:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        details["username"] = username
+
+        return (
+            StatusEnum.FOUND,
+            ConfidenceLevel.HIGH,
+            details,
+        )

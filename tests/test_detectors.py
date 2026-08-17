@@ -1,5 +1,6 @@
 from core.detectors import (
     KeybaseDetector,
+    LichessDetector,
     DevToDetector,
     HackerNewsDetector,
     StatusCodeDetector,
@@ -252,6 +253,37 @@ def test_keybase_api_not_found():
 
     status, confidence, details = KeybaseDetector.detect(
         200,
+        response_data,
+    )
+
+    assert status == StatusEnum.NOT_FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {}
+
+
+def test_lichess_user_is_found():
+    response_data = {
+        "id": "thibault",
+        "username": "thibault",
+    }
+
+    status, confidence, details = LichessDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details["username"] == "thibault"
+
+
+def test_lichess_404_is_not_found():
+    response_data = {
+        "error": "Not found",
+    }
+
+    status, confidence, details = LichessDetector.detect(
+        404,
         response_data,
     )
 

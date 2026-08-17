@@ -21,6 +21,7 @@ def test_all_platforms_have_supported_detector():
         "devto",
         "codeberg",
         "keybase",
+        "lichess",
     }
 
     for platform_name, config in PLATFORMS.items():
@@ -89,4 +90,18 @@ def test_keybase_has_username_placeholder():
     assert (
         "{username}"
         in PLATFORMS["Keybase"]["url_template"]
+    )
+
+
+def test_lichess_uses_lichess_detector():
+    assert (
+        PLATFORMS["Lichess"]["detector"]
+        == "lichess"
+    )
+
+
+def test_lichess_has_username_placeholder():
+    assert (
+        "{username}"
+        in PLATFORMS["Lichess"]["url_template"]
     )

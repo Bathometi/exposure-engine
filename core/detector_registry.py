@@ -3,6 +3,7 @@ from core.detectors import (
     DevToDetector,
     HackerNewsDetector,
     KeybaseDetector,
+    LichessDetector,
     StatusCodeDetector,
     TelegramDetector,
 )
@@ -36,6 +37,11 @@ DETECTOR_REGISTRY = {
 
     "keybase": {
         "detector": KeybaseDetector,
+        "response_type": "json",
+    },
+
+    "lichess": {
+        "detector": LichessDetector,
         "response_type": "json",
     },
 }

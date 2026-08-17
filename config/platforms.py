@@ -64,4 +64,11 @@ PLATFORMS = {
         ),
         "detector": "keybase",
     },
+
+    "Lichess": {
+        "url_template": (
+            "https://lichess.org/api/user/{username}"
+        ),
+        "detector": "lichess",
+    },
 }

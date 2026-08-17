@@ -6,6 +6,7 @@ from core.detectors import (
     DevToDetector,
     HackerNewsDetector,
     KeybaseDetector,
+    LichessDetector,
     StatusCodeDetector,
     TelegramDetector,
 )
@@ -86,5 +87,17 @@ def test_keybase_is_registered_correctly():
 
     assert (
         DETECTOR_REGISTRY["keybase"]["response_type"]
+        == "json"
+    )
+
+
+def test_lichess_is_registered_correctly():
+    assert (
+        DETECTOR_REGISTRY["lichess"]["detector"]
+        is LichessDetector
+    )
+
+    assert (
+        DETECTOR_REGISTRY["lichess"]["response_type"]
         == "json"
     )
