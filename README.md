@@ -2,66 +2,63 @@
 
 **Exposure Engine** is an asynchronous, evidence-based OSINT framework for public username enumeration across multiple platforms.
 
-The project focuses on a simple principle:
+The project is built around one core principle:
 
 > A successful HTTP response is not automatically proof that an account exists.
 
-Instead of treating every `HTTP 200 OK` as a positive result, Exposure Engine uses platform-specific detection logic, structured evidence, confidence levels, and explicit result states.
+Instead of treating every `HTTP 200 OK` as a positive result, Exposure Engine uses source-specific detection logic, structured evidence, confidence levels, explicit result states, and pre-flight input validation.
 
-It is being developed as a practical Python, OSINT, and cybersecurity learning project.
+The project is being developed as a practical Python, OSINT, and cybersecurity learning project.
 
 ---
 
 ## ✨ Key Features
 
-- **⚡ Asynchronous Scanning**  
-  Platform checks run concurrently using `asyncio` and `aiohttp`.
-
-- **🔁 Shared HTTP Session**  
-  A single `aiohttp.ClientSession` is reused during a scan and safely managed through an async context manager.
-
-- **🎯 Evidence-Based Detection**  
-  Different platforms can use different detection strategies instead of relying on one generic HTTP rule.
-
-- **🧩 Detector Registry**  
-  Detector implementations are registered centrally, reducing direct coupling between the HTTP collector and platform-specific logic.
-
-- **🧹 Input Normalization**  
-  Usernames are cleaned and normalized before scanning, including removal of leading `@` and unnecessary whitespace.
-
-- **🚦 Explicit Result States**  
-  Results distinguish confirmed profiles, missing accounts, blocked requests, rate limits, inconclusive responses, and errors.
-
-- **📊 Confidence Levels**  
-  Evidence is classified as `HIGH`, `MEDIUM`, or `LOW` confidence.
-
-- **🔁 Retry Logic**  
-  Retryable HTTP failures use exponential backoff.
-
-- **🖥️ Rich CLI Output**  
-  Scan results are displayed with structured panels, status highlighting, metadata, and a final summary.
-
-- **📦 JSON Reporting**  
-  Every completed scan can be exported as a structured JSON report containing normalized evidence from all sources.
-
-- **🧪 Unit and Integration Testing**  
-  Local tests are separated from tests that depend on real external services.
+- Asynchronous scanning with `asyncio` and `aiohttp`
+- Shared HTTP session for concurrent platform checks
+- Input normalization before scanning
+- Pre-flight username validation before HTTP requests
+- Source-specific detectors
+- Detector Registry for decoupling configuration from detector implementations
+- Explicit result states:
+  - `FOUND`
+  - `NOT_FOUND`
+  - `BLOCKED`
+  - `RATE_LIMITED`
+  - `UNKNOWN`
+  - `ERROR`
+- Confidence levels:
+  - `HIGH`
+  - `MEDIUM`
+  - `LOW`
+- Retry logic with exponential backoff
+- Rich CLI output
+- Structured JSON reports
+- Positive and negative regression matrix
+- Unit and integration tests
+- Failure-path testing with mocks, fake sessions, and `monkeypatch`
 
 ---
 
 ## 🛠️ Supported Platforms
 
-| Platform | Verification Method | Example Metadata |
-| :--- | :--- | :--- |
-| **GitHub** | REST API | Username, name, creation date, public repositories |
-| **GitLab** | REST API | Username, name, available account metadata |
-| **DockerHub** | REST API | Username existence |
-| **Reddit** | JSON endpoint / HTTP state | Access state, blocking, availability |
-| **Telegram** | Public HTML markers | Public profile-page evidence |
-| **Hacker News** | Official public API | Username, karma, creation date, about |
-| **DEV Community** | Public API | Username, name, GitHub username, location, website |
+Exposure Engine currently supports **11 public username sources**.
 
-Platform behavior may change over time.
+| Platform | Detection Strategy | Example Evidence |
+| :--- | :--- | :--- |
+| **GitHub** | Public API / HTTP + JSON | Username, name, creation date, repositories |
+| **GitLab** | Public API / JSON list | Username, name |
+| **DockerHub** | Public API / HTTP + JSON | Username existence |
+| **Reddit** | Public JSON endpoint / HTTP state | Availability or access restriction |
+| **Telegram** | Public HTML markers | Public profile-page evidence |
+| **Hacker News** | Public API | Username, karma, creation date, about |
+| **DEV Community** | Public API | Username, name, GitHub username, location, website |
+| **Codeberg** | Public API | Username, name, creation date, profile metadata |
+| **Keybase** | Public API + application-level status | Username, name, location, creation date |
+| **Lichess** | Public API | Username existence |
+| **Hugging Face** | Public API + user markers | Username, name, creation date, profile information |
+
+Platform behavior can change over time.
 
 When a source does not provide enough evidence for a reliable conclusion, Exposure Engine returns `UNKNOWN` rather than forcing a positive or negative result.
 
@@ -69,11 +66,9 @@ When a source does not provide enough evidence for a reliable conclusion, Exposu
 
 ## 🚦 Result Statuses
 
-Exposure Engine uses explicit result states:
-
 | Status | Meaning |
 | :--- | :--- |
-| `FOUND` | Positive evidence supports the existence of a public profile |
+| `FOUND` | Positive source-specific evidence supports the existence of a public profile |
 | `NOT_FOUND` | Explicit negative evidence supports that the profile does not exist |
 | `BLOCKED` | The source refused or restricted the request |
 | `RATE_LIMITED` | The source applied a request-rate restriction |
@@ -95,15 +90,15 @@ Same username on multiple platforms
 same person
 ```
 
-A `FOUND` result means that a public digital trace was found for that username on a specific source.
+A `FOUND` result means that a public digital trace for that username was found on that specific source.
 
-It does **not** mean that identities across different platforms have been confirmed to belong to the same person.
+It does **not** confirm that profiles with the same username belong to the same person.
 
 ---
 
 ## 📊 Confidence Model
 
-Evidence also includes a confidence level:
+Each result also contains a confidence level.
 
 | Confidence | Meaning |
 | :--- | :--- |
@@ -111,7 +106,43 @@ Evidence also includes a confidence level:
 | `MEDIUM` | The result is meaningful but affected by access restrictions or uncertainty |
 | `LOW` | The result is incomplete, ambiguous, or based on an error condition |
 
-Status and confidence are stored together in a standardized `Evidence` object.
+Status and confidence are stored together inside a standardized `Evidence` object.
+
+---
+
+## 🧹 Normalization and Validation
+
+Username processing happens before network activity.
+
+```text
+Raw input
+    ↓
+Normalizer
+    ↓
+UsernameValidator
+    ↓
+Valid?
+ ┌──┴──┐
+No    Yes
+↓      ↓
+STOP   Scan platforms
+```
+
+The normalizer:
+
+- removes surrounding whitespace;
+- removes leading `@` characters;
+- converts usernames to lowercase.
+
+The global username validator rejects obvious invalid input such as:
+
+- empty usernames;
+- usernames containing whitespace;
+- excessively long usernames.
+
+Platform-specific username rules remain separate from the global validator.
+
+Invalid input is rejected **before the HTTP collector or report generator is started**.
 
 ---
 
@@ -135,8 +166,16 @@ source venv/bin/activate
 
 ### 3. Install dependencies
 
+For normal use:
+
 ```bash
 python -m pip install -r requirements.txt
+```
+
+For development and testing:
+
+```bash
+python -m pip install -r requirements-dev.txt
 ```
 
 ### 4. Run Exposure Engine
@@ -151,21 +190,19 @@ The CLI will ask for a username:
 Введи username для пошуку: octocat
 ```
 
-Usernames can also contain a leading `@`:
+A leading `@` is also accepted:
 
 ```text
 @octocat
 ```
 
-The normalizer converts the raw input into a standardized username before scanning.
-
 ---
 
 ## 🖥️ CLI Output
 
-Exposure Engine displays a separate result panel for every source.
+Exposure Engine displays a separate result panel for every configured source.
 
-Example fields may include:
+Depending on the source, fields may include:
 
 ```text
 Status
@@ -183,9 +220,9 @@ Karma
 About
 ```
 
-Only metadata actually returned by the source is displayed.
+Only metadata actually available from the source is displayed.
 
-At the end of the scan, Exposure Engine generates a summary:
+At the end of a completed scan, the CLI generates a summary for:
 
 ```text
 FOUND
@@ -206,27 +243,17 @@ Completed scans are stored as structured JSON reports inside:
 reports/
 ```
 
-Example:
+Each report contains:
 
-```text
-reports/2026-08-15_10-21-11_username_ben.json
-```
-
-A report contains:
-
-```text
-scan metadata
-raw input
-normalized value
-scan timestamp
-result count
-platform evidence
-status
-confidence
-source-specific metadata
-limitations
-HTTP information
-```
+- scan metadata;
+- raw and normalized input;
+- UTC scan timestamp;
+- result count;
+- source-specific evidence;
+- status and confidence;
+- collected metadata;
+- HTTP information;
+- detector limitations.
 
 Example structure:
 
@@ -236,8 +263,8 @@ Example structure:
     "entity_type": "username",
     "raw_value": "example",
     "normalized_value": "example",
-    "scanned_at_utc": "2026-08-15T10:21:11+00:00",
-    "results_count": 7
+    "scanned_at_utc": "2026-08-17T12:00:00+00:00",
+    "results_count": 11
   },
   "results": []
 }
@@ -249,9 +276,9 @@ Generated reports are excluded from Git through `.gitignore`.
 
 ## 🧪 Testing
 
-Exposure Engine currently separates local tests from external integration tests.
+The default test suite excludes tests that depend on live external services.
 
-### Run the default local test suite
+Run local tests:
 
 ```bash
 python -m pytest -q
@@ -260,66 +287,54 @@ python -m pytest -q
 Current local suite:
 
 ```text
-37 passed
+97 passed
 1 integration test deselected
 ```
 
-These tests are designed to run without depending on a live external API.
-
-### Run integration tests
+Run integration tests explicitly:
 
 ```bash
 python -m pytest -m integration -q
 ```
 
-Current integration suite:
+Current test coverage includes:
 
-```text
-1 passed
-37 deselected
-```
+- schema tests;
+- normalization tests;
+- username validation tests;
+- detector tests;
+- detector registry tests;
+- platform configuration tests;
+- HTTP collector tests;
+- retry and exponential-backoff tests;
+- failure-path tests;
+- async context-manager tests;
+- CLI formatting tests;
+- CLI pre-flight validation tests;
+- JSON reporting tests;
+- positive and negative regression matrices;
+- external integration testing.
 
-The integration test performs a real external API check.
+Mocks, fake HTTP sessions, and `monkeypatch` are used where appropriate so the default test suite remains deterministic and does not depend on live APIs.
 
-### Current total
-
-```text
-38 tests
-```
-
-Test coverage includes:
-
-```text
-normalization
-schema validation
-platform detectors
-detector registry
-platform configuration
-HTTP collector behavior
-retry logic
-exponential backoff
-failure paths
-async context management
-JSON reporting
-external integration
-```
-
-Mocks, fake HTTP sessions, and `monkeypatch` are used where appropriate to keep local tests deterministic.
+The regression matrix currently covers all **11 configured platforms** with positive and negative scenarios.
 
 ---
 
 ## 🏗️ Architecture
 
-Current high-level flow:
+High-level username flow:
 
 ```text
 Raw Username
      ↓
 Normalizer
      ↓
+UsernameValidator
+     ↓
 Platform Configuration
      ↓
-HTTPCollector
+Shared HTTPCollector
      ↓
 Detector Registry
      ↓
@@ -327,79 +342,60 @@ Platform Detector
      ↓
 Evidence
      ↓
-┌───────────────┬───────────────┐
-│               │               │
-Rich CLI     JSON Report     Summary
+┌─────────────┬─────────────┐
+│             │             │
+Rich CLI   JSON Report   Summary
 ```
 
 ### HTTP lifecycle
 
-A scan uses one shared HTTP client:
-
 ```text
-OPEN ClientSession
-        ↓
+OPEN shared aiohttp.ClientSession
+            ↓
 Concurrent platform checks
-        ↓
-Retries when required
-        ↓
+            ↓
+Retry temporary failures
+            ↓
 Collect Evidence
-        ↓
+            ↓
 CLOSE ClientSession
 ```
 
-The shared session is managed using an asynchronous context manager.
+One shared `aiohttp.ClientSession` is reused for a complete scan.
 
 ---
 
 ## 🧩 Detector Registry
 
-The collector does not need to know every detector implementation directly.
+Platform configuration references a detector by name.
 
-Instead, platform configuration references a detector name:
-
-```text
-"devto"
-"hackernews"
-"telegram"
-"status_code"
-```
-
-The Detector Registry maps that name to:
+Example:
 
 ```text
-detector implementation
-+
-expected response type
-```
-
-Example concept:
-
-```text
-"telegram"
-    ↓
-TelegramDetector
-    ↓
-text response
-
-"devto"
-    ↓
-DevToDetector
-    ↓
+HuggingFace
+     ↓
+"huggingface"
+     ↓
+Detector Registry
+     ↓
+HuggingFaceDetector
+     ↓
 JSON response
 ```
 
-This reduces coupling and makes future platform integrations easier to maintain.
+The collector therefore does not need platform-specific `if/elif` branches for every new source.
+
+This keeps HTTP collection separate from response interpretation and reduces coupling between components.
 
 ---
 
 ## 🧠 Collector vs Detector
 
-Exposure Engine keeps data collection and interpretation separate.
+Exposure Engine separates **collection** from **interpretation**.
 
 ```text
 Collector
-→ obtains the response
+→ obtains the HTTP response
 
 Detector
 → decides what the response means
@@ -413,26 +409,17 @@ HTTP 200
 
 only tells us that the server returned a successful HTTP response.
 
-It does **not** necessarily tell us that a requested user exists.
+It does not necessarily prove that the requested account exists.
 
-The detector evaluates source-specific evidence before assigning:
-
-```text
-FOUND
-NOT_FOUND
-BLOCKED
-RATE_LIMITED
-UNKNOWN
-ERROR
-```
+A platform detector evaluates the actual source-specific evidence before assigning a status and confidence level.
 
 ---
 
 ## 🔁 Retry Strategy
 
-Temporary network or server failures can be retried.
+Temporary HTTP failures can be retried.
 
-Retryable states include:
+Retryable states currently include:
 
 ```text
 429
@@ -442,29 +429,19 @@ Retryable states include:
 504
 ```
 
-Exposure Engine uses exponential backoff between attempts.
-
-Conceptually:
+Retries use exponential backoff:
 
 ```text
 request
 ↓
-failure
-
-wait 2 seconds
+temporary failure
 ↓
-retry
-
-wait 4 seconds
-↓
-retry
-
-wait 8 seconds
+wait
 ↓
 retry
 ```
 
-If retryable server failures continue after the maximum number of retries, the result becomes:
+Persistent retryable server failures eventually produce:
 
 ```text
 ERROR / LOW confidence
@@ -474,42 +451,22 @@ ERROR / LOW confidence
 
 ## 🔎 Detection Philosophy
 
-Username enumeration has many edge cases.
+Username enumeration contains many edge cases.
 
 Different platforms may:
 
-- return `HTTP 200` for missing profiles;
-- return `404` for an explicitly missing user;
-- redirect to login or generic pages;
-- return HTML instead of JSON;
-- expose structured APIs;
-- return empty lists;
-- apply rate limits;
-- block automated traffic;
-- expose only users with certain types of public activity.
+- return `HTTP 200` for a missing account;
+- return `404` for an explicitly missing account;
+- return an empty JSON list;
+- return an application-level status inside `HTTP 200`;
+- return HTML rather than JSON;
+- expose only accounts with particular public activity;
+- rate-limit requests;
+- block automated traffic.
 
-Because of this, Exposure Engine does not force every platform into one detection rule.
+Because of this, Exposure Engine does not force every source into one generic detection rule.
 
-Examples:
-
-```text
-GitHub
-→ REST API detection
-
-GitLab
-→ API response detection
-
-Telegram
-→ HTML marker detection
-
-Hacker News
-→ platform-specific API detector
-
-DEV Community
-→ platform-specific API detector
-```
-
-When evidence is insufficient, the engine prefers:
+When available evidence is insufficient, the engine prefers:
 
 ```text
 UNKNOWN
@@ -532,38 +489,40 @@ exposure-engine/
 │   ├── detectors.py
 │   ├── normalizer.py
 │   ├── reporting.py
-│   └── schema.py
+│   ├── schema.py
+│   └── validators.py
 │
 ├── tests/
+│   ├── test_cli_formatting.py
+│   ├── test_cli_validation.py
 │   ├── test_collector.py
 │   ├── test_detector_registry.py
 │   ├── test_detectors.py
 │   ├── test_normalizer.py
 │   ├── test_platform_config.py
+│   ├── test_regression_matrix.py
 │   ├── test_reporting.py
 │   ├── test_retry.py
-│   └── test_schema.py
+│   ├── test_schema.py
+│   └── test_username_validator.py
 │
-├── reports/
+├── reports/              # generated locally, ignored by Git
 ├── check_username.py
 ├── pytest.ini
 ├── requirements.txt
+├── requirements-dev.txt
 └── README.md
 ```
-
-The architecture is expected to evolve as additional entity types and sources are introduced.
 
 ---
 
 ## ⚠️ Limitations
 
-Exposure Engine only works with publicly accessible information and available public endpoints.
+Exposure Engine works only with publicly accessible information and available public endpoints.
 
-Platform APIs, HTML layouts, rate limits, anti-bot systems, and access policies may change without notice.
+Platform APIs, HTML layouts, rate limits, anti-bot systems, and access policies may change.
 
 A detector that works today may require adjustment in the future.
-
-A result of `UNKNOWN` is intentional when the available evidence is insufficient.
 
 The project does not attempt to bypass:
 
@@ -574,43 +533,29 @@ platform access controls
 anti-bot protections
 ```
 
-Results should always be interpreted as source-specific evidence rather than automatic identity attribution.
+Results should be interpreted as **source-specific evidence**, not automatic identity attribution.
 
 ---
 
-## 🎯 Project Goals
-
-Exposure Engine is being developed as a hands-on learning project focused on:
-
-- Python;
-- asynchronous programming;
-- HTTP and API analysis;
-- OSINT methodology;
-- data normalization;
-- evidence-based detection;
-- confidence modeling;
-- defensive error handling;
-- retries and exponential backoff;
-- automated testing;
-- mocks and integration tests;
-- modular software architecture;
-- structured reporting.
+## 🎯 Roadmap
 
 The current development phase is focused on stabilizing the **USERNAME** engine.
 
-Future development may include:
-
 ```text
-more reliable username sources
-↓
+carefully validated username sources
+        ↓
 USERNAME v1 stabilization
-↓
+        ↓
 EMAIL entity support
-↓
+        ↓
 PHONE entity support
-↓
-additional public exposure signals
+        ↓
+additional lawful public exposure signals
 ```
+
+The goal is not to maximize the number of supported websites.
+
+The priority is reliable detection, understandable evidence, low false-positive risk, and maintainable architecture.
 
 ---
 
@@ -629,30 +574,23 @@ The project is not intended for unauthorized access, bypassing technical restric
 
 ---
 
-## 📌 Project Status
+## 📌 Current Status
 
-**Work in progress.**
+**Work in progress — USERNAME engine stabilization.**
 
 Current state:
 
 ```text
-7 username sources
+11 username sources
+97 local tests
+1 integration test
+22 regression scenarios
+Input normalization
+Username pre-flight validation
+Shared aiohttp ClientSession
+Detector Registry
+Source-specific detectors
+Retry + exponential backoff
 Rich CLI
 JSON reporting
-Detector Registry
-Shared aiohttp ClientSession
-Retry + exponential backoff
-37 local tests
-1 integration test
-38 tests total
-```
-
-Current development priorities:
-
-```text
-improve architecture
-expand reliable test coverage
-add carefully validated public sources
-reduce false positives
-stabilize USERNAME v1
 ```
