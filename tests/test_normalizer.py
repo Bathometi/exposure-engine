@@ -50,3 +50,27 @@ def test_generic_normalize_email():
     )
 
     assert result == "test@example.com"
+
+
+def test_username_normalization_empty_string():
+    result = Normalizer.normalize_username(
+        "   "
+    )
+
+    assert result == ""
+
+
+def test_username_normalization_only_at_symbols():
+    result = Normalizer.normalize_username(
+        "  @@@  "
+    )
+
+    assert result == ""
+
+
+def test_username_normalization_multiple_leading_at_symbols():
+    result = Normalizer.normalize_username(
+        "  @@@SomeName  "
+    )
+
+    assert result == "somename"
