@@ -20,6 +20,7 @@ def test_all_platforms_have_supported_detector():
         "hackernews",
         "devto",
         "codeberg",
+        "keybase",
     }
 
     for platform_name, config in PLATFORMS.items():
@@ -74,4 +75,18 @@ def test_codeberg_has_username_placeholder():
     assert (
         "{username}"
         in PLATFORMS["Codeberg"]["url_template"]
+    )
+
+
+def test_keybase_uses_keybase_detector():
+    assert (
+        PLATFORMS["Keybase"]["detector"]
+        == "keybase"
+    )
+
+
+def test_keybase_has_username_placeholder():
+    assert (
+        "{username}"
+        in PLATFORMS["Keybase"]["url_template"]
     )

@@ -54,4 +54,14 @@ PLATFORMS = {
         ),
         "detector": "codeberg",
     },
+
+    "Keybase": {
+        "url_template": (
+            "https://keybase.io/_/api/1.0/"
+            "user/lookup.json"
+            "?username={username}"
+            "&fields=basics,profile"
+        ),
+        "detector": "keybase",
+    },
 }
