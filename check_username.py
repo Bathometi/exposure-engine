@@ -12,6 +12,7 @@ from core.collector import HTTPCollector
 from core.normalizer import Normalizer
 from core.reporting import save_json_report
 from core.schema import EntityType, StatusEnum
+from core.validators import UsernameValidator
 
 
 console = Console()
@@ -78,6 +79,24 @@ async def scan_username(
         raw_username,
     )
 
+    is_valid, reason = UsernameValidator.validate(
+        normalized_username
+    )
+
+    if not is_valid:
+        console.print(
+            Panel(
+                (
+                    "[bold red]INVALID USERNAME[/bold red]"
+                    f"\n{reason}"
+                ),
+                title="EXPOSURE ENGINE",
+                border_style="red",
+            )
+        )
+
+        return False
+
     console.print(
         Panel(
             (
@@ -113,17 +132,14 @@ async def scan_username(
 
             tasks.append(task)
 
-        # Важливо:
-        # усі HTTP-запити завершуються,
+        # Усі HTTP-запити завершуються,
         # поки shared session ще відкрита.
         results = await asyncio.gather(
             *tasks,
             return_exceptions=True,
         )
 
-    # Тут async with уже завершився.
-    # Shared ClientSession закрита.
-    # Але Evidence/results уже зібрані.
+    # Тут shared ClientSession вже закрита.
     evidence_results = []
 
     for source_name, result in zip(
@@ -345,28 +361,23 @@ async def scan_username(
         f"{report_path}"
     )
 
+    return True
+
 
 def main():
     try:
         raw_username = input(
             "Введи username для пошуку: "
-        ).strip()
+        )
 
-        if not raw_username:
-            console.print(
-                (
-                    "[red]Username не може "
-                    "бути порожнім.[/red]"
-                )
-            )
-
-            sys.exit(1)
-
-        asyncio.run(
+        scan_completed = asyncio.run(
             scan_username(
                 raw_username
             )
         )
+
+        if not scan_completed:
+            sys.exit(1)
 
     except KeyboardInterrupt:
         console.print(
