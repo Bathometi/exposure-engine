@@ -1,4 +1,5 @@
 from core.detectors import (
+    ChessComDetector,
     CodebergDetector,
     DevToDetector,
     HackerNewsDetector,
@@ -48,6 +49,11 @@ DETECTOR_REGISTRY = {
 
     "huggingface": {
         "detector": HuggingFaceDetector,
+        "response_type": "json",
+    },
+
+    "chesscom": {
+        "detector": ChessComDetector,
         "response_type": "json",
     },
 }

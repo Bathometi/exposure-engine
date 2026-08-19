@@ -725,3 +725,98 @@ class HuggingFaceDetector(BaseDetector):
             ConfidenceLevel.HIGH,
             details,
         )
+
+
+class ChessComDetector(BaseDetector):
+    """
+    Detector for public Chess.com player profiles.
+    """
+
+    @staticmethod
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
+        details = {}
+
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 403:
+            return (
+                StatusEnum.BLOCKED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 404:
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                details,
+            )
+
+        if status_code != 200:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        if not isinstance(response_data, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        username = response_data.get("username")
+        player_id = response_data.get("player_id")
+
+        if not username or not player_id:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        details["username"] = username
+        details["player_id"] = player_id
+
+        optional_fields = {
+            "name": response_data.get("name"),
+            "title": response_data.get("title"),
+            "followers": response_data.get("followers"),
+            "location": response_data.get("location"),
+            "status": response_data.get("status"),
+            "is_streamer": response_data.get("is_streamer"),
+            "twitch_url": response_data.get("twitch_url"),
+            "verified": response_data.get("verified"),
+            "league": response_data.get("league"),
+        }
+
+        joined = response_data.get("joined")
+
+        if isinstance(joined, (int, float)):
+            details["created_at"] = datetime.fromtimestamp(
+                joined,
+                tz=timezone.utc,
+            ).isoformat()
+
+        for key, value in optional_fields.items():
+            if value is not None and value != "":
+                details[key] = value
+
+        return (
+            StatusEnum.FOUND,
+            ConfidenceLevel.HIGH,
+            details,
+        )

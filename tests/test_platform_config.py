@@ -23,6 +23,7 @@ def test_all_platforms_have_supported_detector():
         "keybase",
         "lichess",
         "huggingface",
+        "chesscom",
     }
 
     for platform_name, config in PLATFORMS.items():
@@ -119,4 +120,18 @@ def test_huggingface_has_username_placeholder():
     assert (
         "{username}"
         in PLATFORMS["HuggingFace"]["url_template"]
+    )
+
+
+def test_chesscom_uses_chesscom_detector():
+    assert (
+        PLATFORMS["ChessCom"]["detector"]
+        == "chesscom"
+    )
+
+
+def test_chesscom_has_username_placeholder():
+    assert (
+        "{username}"
+        in PLATFORMS["ChessCom"]["url_template"]
     )

@@ -2,6 +2,7 @@ from config.platforms import PLATFORMS
 
 from core.detector_registry import DETECTOR_REGISTRY
 from core.detectors import (
+    ChessComDetector,
     CodebergDetector,
     DevToDetector,
     HackerNewsDetector,
@@ -112,5 +113,17 @@ def test_huggingface_is_registered_correctly():
 
     assert (
         DETECTOR_REGISTRY["huggingface"]["response_type"]
+        == "json"
+    )
+
+
+def test_chesscom_is_registered_correctly():
+    assert (
+        DETECTOR_REGISTRY["chesscom"]["detector"]
+        is ChessComDetector
+    )
+
+    assert (
+        DETECTOR_REGISTRY["chesscom"]["response_type"]
         == "json"
     )

@@ -79,4 +79,11 @@ PLATFORMS = {
         ),
         "detector": "huggingface",
     },
+
+    "ChessCom": {
+        "url_template": (
+            "https://api.chess.com/pub/player/{username}"
+        ),
+        "detector": "chesscom",
+    },
 }

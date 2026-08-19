@@ -3,6 +3,7 @@ from core.detectors import (
     LichessDetector,
     DevToDetector,
     HackerNewsDetector,
+    ChessComDetector,
     HuggingFaceDetector,
     StatusCodeDetector,
     TelegramDetector,
@@ -347,6 +348,72 @@ def test_huggingface_200_without_user_markers_is_unknown():
     }
 
     status, confidence, details = HuggingFaceDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.UNKNOWN
+    assert confidence == ConfidenceLevel.LOW
+    assert details == {}
+
+
+def test_chesscom_user_is_found():
+    response_data = {
+        "player_id": 15448422,
+        "username": "hikaru",
+        "name": "Hikaru Nakamura",
+        "title": "GM",
+        "followers": 1406300,
+        "location": "Florida",
+        "joined": 1389043258,
+        "status": "premium",
+        "is_streamer": True,
+        "twitch_url": "https://twitch.tv/gmhikaru",
+        "verified": False,
+        "league": "Legend",
+    }
+
+    status, confidence, details = ChessComDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details["username"] == "hikaru"
+    assert details["name"] == "Hikaru Nakamura"
+    assert details["title"] == "GM"
+    assert details["followers"] == 1406300
+    assert details["location"] == "Florida"
+    assert details["status"] == "premium"
+    assert details["is_streamer"] is True
+    assert details["twitch_url"] == "https://twitch.tv/gmhikaru"
+    assert details["verified"] is False
+    assert details["league"] == "Legend"
+
+
+def test_chesscom_404_is_not_found():
+    response_data = {
+        "code": 0,
+        "message": 'User "qzxvbnm847362910" not found.',
+    }
+
+    status, confidence, details = ChessComDetector.detect(
+        404,
+        response_data,
+    )
+
+    assert status == StatusEnum.NOT_FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {}
+
+
+def test_chesscom_200_without_user_markers_is_unknown():
+    response_data = {
+        "message": "Unexpected response",
+    }
+
+    status, confidence, details = ChessComDetector.detect(
         200,
         response_data,
     )
