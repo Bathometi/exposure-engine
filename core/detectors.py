@@ -820,3 +820,93 @@ class ChessComDetector(BaseDetector):
             ConfidenceLevel.HIGH,
             details,
         )
+
+
+class GravatarDetector(BaseDetector):
+    """
+    Detector for public Gravatar profiles.
+
+    FOUND means that a public Gravatar profile was found
+    for the supplied profile identifier.
+
+    It does not prove that the email mailbox exists
+    or is deliverable.
+    """
+
+    @staticmethod
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
+        details = {}
+
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 403:
+            return (
+                StatusEnum.BLOCKED,
+                ConfidenceLevel.MEDIUM,
+                details,
+            )
+
+        if status_code == 404:
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                details,
+            )
+
+        if status_code != 200:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        if not isinstance(response_data, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        profile_hash = response_data.get("hash")
+        profile_url = response_data.get("profile_url")
+
+        if not profile_hash or not profile_url:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                details,
+            )
+
+        details["hash"] = profile_hash
+        details["profile_url"] = profile_url
+
+        optional_fields = {
+            "name": response_data.get("display_name"),
+            "avatar_url": response_data.get("avatar_url"),
+            "location": response_data.get("location"),
+            "about": response_data.get("description"),
+            "job_title": response_data.get("job_title"),
+            "company": response_data.get("company"),
+        }
+
+        for key, value in optional_fields.items():
+            if value is not None and value != "":
+                details[key] = value
+
+        return (
+            StatusEnum.FOUND,
+            ConfidenceLevel.HIGH,
+            details,
+        )

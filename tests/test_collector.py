@@ -159,3 +159,31 @@ async def test_collector_supports_async_context_manager():
         assert collector.session is not None
 
     assert collector.session is None
+@pytest.mark.asyncio
+async def test_collector_uses_identifier_for_target_url():
+    collector = HTTPCollector()
+
+    gravatar_config = {
+        "url_template": (
+            "https://api.gravatar.com/"
+            "v3/profiles/{value}"
+        ),
+        "identifier": "gravatar_sha256",
+        "detector": "does_not_exist",
+    }
+
+    evidence = await collector.check_platform(
+        entity_type=EntityType.EMAIL,
+        raw_value="User@Example.COM",
+        normalized_value="user@example.com",
+        source_name="Gravatar",
+        platform_config=gravatar_config,
+    )
+
+    assert evidence.status == StatusEnum.ERROR
+
+    assert evidence.details["target_url"] == (
+        "https://api.gravatar.com/v3/profiles/"
+        "b4c9a289323b21a01c3e940f150eb9b8"
+        "c542587f1abfd8f0e1cc1ffc5e475514"
+    )

@@ -5,6 +5,7 @@ from typing import Any, Dict
 import aiohttp
 
 from core.detector_registry import DETECTOR_REGISTRY
+from core.identifiers import IDENTIFIER_REGISTRY
 from core.schema import (
     ConfidenceLevel,
     EntityType,
@@ -94,8 +95,22 @@ class HTTPCollector:
         platform_config: Dict[str, Any],
     ) -> Evidence:
 
+        identifier_name = platform_config.get(
+            "identifier",
+            "identity",
+        )
+
+        identifier = IDENTIFIER_REGISTRY[
+            identifier_name
+        ]
+
+        request_value = identifier(
+            normalized_value
+        )
+
         url = platform_config["url_template"].format(
-            username=normalized_value
+            username=request_value,
+            value=request_value,
         )
 
         detector_name = platform_config.get(

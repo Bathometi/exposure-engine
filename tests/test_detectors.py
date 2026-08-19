@@ -3,6 +3,7 @@ from core.detectors import (
     LichessDetector,
     DevToDetector,
     HackerNewsDetector,
+    GravatarDetector,
     ChessComDetector,
     HuggingFaceDetector,
     StatusCodeDetector,
@@ -414,6 +415,71 @@ def test_chesscom_200_without_user_markers_is_unknown():
     }
 
     status, confidence, details = ChessComDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.UNKNOWN
+    assert confidence == ConfidenceLevel.LOW
+    assert details == {}
+
+
+def test_gravatar_profile_is_found():
+    response_data = {
+        "hash": (
+            "99511d6010af8c574c31f94e1b327bba"
+            "5e25086dd7b92a4b6f3e132b579cc8d1"
+        ),
+        "display_name": "Example",
+        "profile_url": "https://gravatar.com/examplefork",
+        "avatar_url": "https://0.gravatar.com/avatar/example",
+        "location": "E.G.",
+        "description": (
+            "Sorry, this is not my name. "
+            "Just an example, you know."
+        ),
+        "job_title": "Chief",
+        "company": "EG Inc",
+    }
+
+    status, confidence, details = GravatarDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details["hash"] == response_data["hash"]
+    assert details["name"] == "Example"
+    assert details["profile_url"] == (
+        "https://gravatar.com/examplefork"
+    )
+    assert details["location"] == "E.G."
+    assert details["job_title"] == "Chief"
+    assert details["company"] == "EG Inc"
+
+
+def test_gravatar_404_is_not_found():
+    response_data = {
+        "error": "Profile not found",
+    }
+
+    status, confidence, details = GravatarDetector.detect(
+        404,
+        response_data,
+    )
+
+    assert status == StatusEnum.NOT_FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {}
+
+
+def test_gravatar_200_without_profile_markers_is_unknown():
+    response_data = {
+        "message": "Unexpected response",
+    }
+
+    status, confidence, details = GravatarDetector.detect(
         200,
         response_data,
     )
