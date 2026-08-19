@@ -42,7 +42,7 @@ The project is being developed as a practical Python, OSINT, and cybersecurity l
 
 ## 🛠️ Supported Platforms
 
-Exposure Engine currently supports **11 public username sources**.
+Exposure Engine currently supports **12 public username sources**.
 
 | Platform | Detection Strategy | Example Evidence |
 | :--- | :--- | :--- |
@@ -57,6 +57,7 @@ Exposure Engine currently supports **11 public username sources**.
 | **Keybase** | Public API + application-level status | Username, name, location, creation date |
 | **Lichess** | Public API | Username existence |
 | **Hugging Face** | Public API + user markers | Username, name, creation date, profile information |
+| **Chess.com** | Public API + player markers | Username, name, title, creation date, profile metadata |
 
 Platform behavior can change over time.
 
@@ -264,7 +265,7 @@ Example structure:
     "raw_value": "example",
     "normalized_value": "example",
     "scanned_at_utc": "2026-08-17T12:00:00+00:00",
-    "results_count": 11
+    "results_count": 12
   },
   "results": []
 }
@@ -317,7 +318,7 @@ Current test coverage includes:
 
 Mocks, fake HTTP sessions, and `monkeypatch` are used where appropriate so the default test suite remains deterministic and does not depend on live APIs.
 
-The regression matrix currently covers all **11 configured platforms** with positive and negative scenarios.
+The regression matrix currently covers all **12 configured platforms** with positive and negative scenarios.
 
 ---
 
@@ -581,10 +582,10 @@ The project is not intended for unauthorized access, bypassing technical restric
 Current state:
 
 ```text
-11 username sources
-97 local tests
+12 username sources
+105 local tests
 1 integration test
-22 regression scenarios
+24 regression scenarios
 Input normalization
 Username pre-flight validation
 Shared aiohttp ClientSession
