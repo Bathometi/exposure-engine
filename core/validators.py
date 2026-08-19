@@ -28,3 +28,38 @@ class UsernameValidator:
             return False, "Username is too long."
 
         return True, None
+
+
+class EmailValidator:
+    """
+    Performs basic sanity validation for email addresses.
+
+    This validator intentionally checks only obvious structural
+    problems. It does not attempt to implement the full email RFC.
+    """
+
+    @classmethod
+    def validate(
+        cls,
+        email: str,
+    ) -> Tuple[bool, Optional[str]]:
+        cleaned = email.strip()
+
+        if not cleaned:
+            return False, "Email cannot be empty."
+
+        if any(char.isspace() for char in cleaned):
+            return False, "Email cannot contain whitespace."
+
+        if cleaned.count("@") != 1:
+            return False, "Email must contain exactly one @ symbol."
+
+        local_part, domain = cleaned.split("@", 1)
+
+        if not local_part:
+            return False, "Email local part cannot be empty."
+
+        if not domain:
+            return False, "Email domain cannot be empty."
+
+        return True, None
