@@ -87,3 +87,15 @@ PLATFORMS = {
         "detector": "chesscom",
     },
 }
+
+EMAIL_PLATFORMS = {
+    "Gravatar": {
+        "url_template": (
+            "https://api.gravatar.com/"
+            "v3/profiles/{value}"
+        ),
+        "identifier": "gravatar_sha256",
+        "detector": "gravatar",
+    },
+
+}

@@ -1,4 +1,7 @@
-from config.platforms import PLATFORMS
+from config.platforms import (
+    EMAIL_PLATFORMS,
+    PLATFORMS,
+)
 
 from core.detector_registry import DETECTOR_REGISTRY
 from core.detectors import (
@@ -6,6 +9,7 @@ from core.detectors import (
     CodebergDetector,
     DevToDetector,
     HackerNewsDetector,
+    GravatarDetector,
     HuggingFaceDetector,
     KeybaseDetector,
     LichessDetector,
@@ -127,3 +131,21 @@ def test_chesscom_is_registered_correctly():
         DETECTOR_REGISTRY["chesscom"]["response_type"]
         == "json"
     )
+def test_gravatar_is_registered_correctly():
+    assert (
+        DETECTOR_REGISTRY["gravatar"]["detector"]
+        is GravatarDetector
+    )
+
+    assert (
+        DETECTOR_REGISTRY["gravatar"]["response_type"]
+        == "json"
+    )
+def test_all_email_detectors_are_registered():
+    for source_name, config in EMAIL_PLATFORMS.items():
+        detector_name = config["detector"]
+
+        assert detector_name in DETECTOR_REGISTRY, (
+            f"{source_name} uses detector "
+            f"'{detector_name}' which is not registered"
+        )

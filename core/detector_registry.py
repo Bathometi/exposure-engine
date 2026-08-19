@@ -3,6 +3,7 @@ from core.detectors import (
     CodebergDetector,
     DevToDetector,
     HackerNewsDetector,
+    GravatarDetector,
     HuggingFaceDetector,
     KeybaseDetector,
     LichessDetector,
@@ -54,6 +55,11 @@ DETECTOR_REGISTRY = {
 
     "chesscom": {
         "detector": ChessComDetector,
+        "response_type": "json",
+    },
+
+    "gravatar": {
+        "detector": GravatarDetector,
         "response_type": "json",
     },
 }
