@@ -1,4 +1,5 @@
 import asyncio
+import os
 from contextlib import asynccontextmanager
 from typing import Any, Dict
 
@@ -85,6 +86,24 @@ class HTTPCollector:
             timeout=self.timeout,
         ) as session:
             yield session
+    def _resolve_request_headers(
+        self,
+        platform_config: Dict[str, Any],
+    ) -> Dict[str, str]:
+        headers = {}
+
+        for header_name, env_name in (
+            platform_config.get(
+                "headers_from_env",
+                {},
+            ).items()
+        ):
+            value = os.getenv(env_name)
+
+            if value:
+                headers[header_name] = value
+
+        return headers
 
     async def check_platform(
         self,
@@ -111,6 +130,9 @@ class HTTPCollector:
         url = platform_config["url_template"].format(
             username=request_value,
             value=request_value,
+        )
+        request_headers = self._resolve_request_headers(
+            platform_config
         )
 
         detector_name = platform_config.get(
@@ -156,6 +178,7 @@ class HTTPCollector:
 
                     async with session.get(
                         url,
+                        headers=request_headers,
                         allow_redirects=True,
                     ) as response:
 

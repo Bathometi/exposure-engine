@@ -4,6 +4,7 @@ from core.detectors import (
     DevToDetector,
     HackerNewsDetector,
     GravatarDetector,
+    HIBPDetector,
     HuggingFaceDetector,
     KeybaseDetector,
     LichessDetector,
@@ -60,6 +61,10 @@ DETECTOR_REGISTRY = {
 
     "gravatar": {
         "detector": GravatarDetector,
+        "response_type": "json",
+    },
+    "hibp": {
+        "detector": HIBPDetector,
         "response_type": "json",
     },
 }

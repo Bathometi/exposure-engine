@@ -10,6 +10,7 @@ from core.detectors import (
     DevToDetector,
     HackerNewsDetector,
     GravatarDetector,
+    HIBPDetector,
     HuggingFaceDetector,
     KeybaseDetector,
     LichessDetector,
@@ -149,3 +150,13 @@ def test_all_email_detectors_are_registered():
             f"{source_name} uses detector "
             f"'{detector_name}' which is not registered"
         )
+def test_hibp_is_registered_correctly():
+    assert (
+        DETECTOR_REGISTRY["hibp"]["detector"]
+        is HIBPDetector
+    )
+
+    assert (
+        DETECTOR_REGISTRY["hibp"]["response_type"]
+        == "json"
+    )

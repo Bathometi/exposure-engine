@@ -98,4 +98,14 @@ EMAIL_PLATFORMS = {
         "detector": "gravatar",
     },
 
+    "HIBP": {
+        "url_template": (
+            "https://haveibeenpwned.com/"
+            "api/v3/breachedAccount/{value}"
+        ),
+        "detector": "hibp",
+        "headers_from_env": {
+            "hibp-api-key": "HIBP_API_KEY",
+        },
+    }
 }

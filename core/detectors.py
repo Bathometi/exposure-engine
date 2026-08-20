@@ -910,3 +910,62 @@ class GravatarDetector(BaseDetector):
             ConfidenceLevel.HIGH,
             details,
         )
+class HIBPDetector(BaseDetector):
+    """
+    Detector for Have I Been Pwned breach results.
+    """
+
+    @staticmethod
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                {},
+            )
+        if status_code == 403:
+            return (
+                StatusEnum.BLOCKED,
+                ConfidenceLevel.MEDIUM,
+                {},
+            )
+        if status_code == 404:
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                {},
+            )
+        if (
+            status_code == 200
+            and isinstance(response_data, list)
+            and response_data
+        ):
+            breaches = [
+                item["Name"]
+                for item in response_data
+                if isinstance(item, dict)
+                and item.get("Name")
+            ]
+
+            if breaches:
+                return (
+                    StatusEnum.FOUND,
+                    ConfidenceLevel.HIGH,
+                    {
+                        "breach_count": len(breaches),
+                        "breaches": breaches,
+                    },
+                )
+
+        return (
+            StatusEnum.UNKNOWN,
+            ConfidenceLevel.LOW,
+            {},
+        )

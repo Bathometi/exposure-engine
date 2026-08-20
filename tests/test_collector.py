@@ -83,6 +83,7 @@ class FakeSession:
     """
     Фальшива aiohttp ClientSession.
     """
+    last_get_kwargs = None
 
     def __init__(
         self,
@@ -107,6 +108,7 @@ class FakeSession:
         *args,
         **kwargs,
     ):
+        FakeSession.last_get_kwargs = kwargs
         return FakeResponse()
 
 
@@ -187,3 +189,74 @@ async def test_collector_uses_identifier_for_target_url():
         "b4c9a289323b21a01c3e940f150eb9b8"
         "c542587f1abfd8f0e1cc1ffc5e475514"
     )
+def test_collector_resolves_headers_from_environment(
+    monkeypatch,
+):
+    collector = HTTPCollector()
+
+    monkeypatch.setenv(
+        "HIBP_API_KEY",
+        "test-api-key",
+    )
+
+    platform_config = {
+        "headers_from_env": {
+            "hibp-api-key": "HIBP_API_KEY",
+        },
+    }
+
+    headers = collector._resolve_request_headers(
+        platform_config
+    )
+
+    assert headers == {
+        "hibp-api-key": "test-api-key",
+    }
+@pytest.mark.asyncio
+async def test_collector_passes_env_headers_to_request(
+    monkeypatch,
+):
+    collector = HTTPCollector()
+
+    monkeypatch.setenv(
+        "HIBP_API_KEY",
+        "test-api-key",
+    )
+
+    monkeypatch.setitem(
+        DETECTOR_REGISTRY,
+        "header_test",
+        {
+            "detector": StatusCodeDetector,
+            "response_type": "xml",
+        },
+    )
+
+    monkeypatch.setattr(
+        "core.collector.aiohttp.ClientSession",
+        FakeSession,
+    )
+
+    FakeSession.last_get_kwargs = None
+
+    platform_config = {
+        "url_template": (
+            "https://example.test/{value}"
+        ),
+        "detector": "header_test",
+        "headers_from_env": {
+            "hibp-api-key": "HIBP_API_KEY",
+        },
+    }
+
+    await collector.check_platform(
+        entity_type=EntityType.EMAIL,
+        raw_value="user@example.com",
+        normalized_value="user@example.com",
+        source_name="HeaderTest",
+        platform_config=platform_config,
+    )
+
+    assert FakeSession.last_get_kwargs["headers"] == {
+        "hibp-api-key": "test-api-key",
+    }

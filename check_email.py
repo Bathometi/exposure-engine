@@ -284,6 +284,24 @@ async def scan_email(
                     "hash"
                 ),
             )
+            add_detail_row(
+                table,
+                "Breach Count",
+                details.get(
+                    "breach_count"
+                ),
+            )
+
+            breaches = details.get(
+                "breaches"
+            )
+
+            if breaches:
+                add_detail_row(
+                    table,
+                    "Breaches",
+                    ", ".join(breaches),
+                )
 
         add_detail_row(
             table,

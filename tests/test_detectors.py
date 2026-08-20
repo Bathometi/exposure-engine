@@ -4,6 +4,7 @@ from core.detectors import (
     DevToDetector,
     HackerNewsDetector,
     GravatarDetector,
+    HIBPDetector,
     ChessComDetector,
     HuggingFaceDetector,
     StatusCodeDetector,
@@ -482,6 +483,58 @@ def test_gravatar_200_without_profile_markers_is_unknown():
     status, confidence, details = GravatarDetector.detect(
         200,
         response_data,
+    )
+
+    assert status == StatusEnum.UNKNOWN
+    assert confidence == ConfidenceLevel.LOW
+    assert details == {}
+def test_hibp_breach_is_found():
+    response_data = [
+        {
+            "Name": "Adobe",
+        }
+    ]
+
+    status, confidence, details = HIBPDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details["breach_count"] == 1
+    assert details["breaches"] == ["Adobe"]
+def test_hibp_404_is_not_found():
+    status, confidence, details = HIBPDetector.detect(
+        404,
+        None,
+    )
+
+    assert status == StatusEnum.NOT_FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {}
+def test_hibp_429_is_rate_limited():
+    status, confidence, details = HIBPDetector.detect(
+        429,
+        None,
+    )
+
+    assert status == StatusEnum.RATE_LIMITED
+    assert confidence == ConfidenceLevel.MEDIUM
+    assert details == {}
+def test_hibp_403_is_blocked():
+    status, confidence, details = HIBPDetector.detect(
+        403,
+        None,
+    )
+
+    assert status == StatusEnum.BLOCKED
+    assert confidence == ConfidenceLevel.MEDIUM
+    assert details == {}
+def test_hibp_empty_200_is_unknown():
+    status, confidence, details = HIBPDetector.detect(
+        200,
+        [],
     )
 
     assert status == StatusEnum.UNKNOWN
