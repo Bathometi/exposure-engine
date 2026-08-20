@@ -9,6 +9,7 @@ import check_email
         "",
         "user example@example.com",
         "userexample.com",
+        "\udcd1user@example.com",
     ],
 )
 @pytest.mark.asyncio

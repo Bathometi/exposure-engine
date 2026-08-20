@@ -910,6 +910,8 @@ class GravatarDetector(BaseDetector):
             ConfidenceLevel.HIGH,
             details,
         )
+
+
 class HIBPDetector(BaseDetector):
     """
     Detector for Have I Been Pwned breach results.
@@ -930,6 +932,13 @@ class HIBPDetector(BaseDetector):
                 ConfidenceLevel.MEDIUM,
                 {},
             )
+        if status_code == 401:
+            return (
+                StatusEnum.ERROR,
+                ConfidenceLevel.LOW,
+                {},
+            )
+
         if status_code == 403:
             return (
                 StatusEnum.BLOCKED,

@@ -48,6 +48,11 @@ class EmailValidator:
         if not cleaned:
             return False, "Email cannot be empty."
 
+        try:
+            cleaned.encode("utf-8")
+        except UnicodeEncodeError:
+            return False, "Email contains invalid Unicode characters."
+
         if any(char.isspace() for char in cleaned):
             return False, "Email cannot contain whitespace."
 

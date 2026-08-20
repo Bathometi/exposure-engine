@@ -61,3 +61,12 @@ def test_invalid_emails_are_rejected(
 
     assert is_valid is False
     assert reason == expected_reason
+
+
+def test_email_rejects_invalid_utf8_surrogate():
+    invalid_email = "\udcd1user@example.com"
+
+    is_valid, reason = EmailValidator.validate(invalid_email)
+
+    assert is_valid is False
+    assert reason == "Email contains invalid Unicode characters."

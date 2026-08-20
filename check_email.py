@@ -371,17 +371,28 @@ async def scan_email(
 
 def main():
     try:
-        raw_email = input(
-            "Введи email для пошуку: "
-        )
+        raw_emails = sys.argv[1:]
 
-        scan_completed = asyncio.run(
-            scan_email(
-                raw_email
+        if not raw_emails:
+            raw_emails = [
+                input(
+                    "Введи email для пошуку: "
+                )
+            ]
+
+        all_completed = True
+
+        for raw_email in raw_emails:
+            scan_completed = asyncio.run(
+                scan_email(
+                    raw_email
+                )
             )
-        )
 
-        if not scan_completed:
+            if not scan_completed:
+                all_completed = False
+
+        if not all_completed:
             sys.exit(1)
 
     except KeyboardInterrupt:

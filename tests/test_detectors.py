@@ -540,3 +540,12 @@ def test_hibp_empty_200_is_unknown():
     assert status == StatusEnum.UNKNOWN
     assert confidence == ConfidenceLevel.LOW
     assert details == {}
+def test_hibp_401_is_error():
+    status, confidence, details = HIBPDetector.detect(
+        401,
+        None,
+    )
+
+    assert status == StatusEnum.ERROR
+    assert confidence == ConfidenceLevel.LOW
+    assert details == {}
