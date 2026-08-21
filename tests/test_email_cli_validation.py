@@ -40,3 +40,35 @@ async def test_invalid_email_stops_before_http_and_report(
     )
 
     assert result is False
+
+
+
+def test_main_scans_all_cli_email_arguments(monkeypatch):
+    scanned_emails = []
+
+    async def fake_scan_email(raw_email):
+        scanned_emails.append(raw_email)
+        return True
+
+    monkeypatch.setattr(
+        check_email,
+        "scan_email",
+        fake_scan_email,
+    )
+
+    monkeypatch.setattr(
+        check_email.sys,
+        "argv",
+        [
+            "check_email.py",
+            "first@example.com",
+            "second@example.com",
+        ],
+    )
+
+    check_email.main()
+
+    assert scanned_emails == [
+        "first@example.com",
+        "second@example.com",
+    ]
