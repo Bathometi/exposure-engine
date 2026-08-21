@@ -9,6 +9,7 @@ from rich.table import Table
 
 from config.platforms import EMAIL_PLATFORMS
 from core.collector import HTTPCollector
+from core.dns_intelligence import collect_email_domain_intelligence
 from core.normalizer import Normalizer
 from core.reporting import save_json_report
 from core.schema import EntityType, StatusEnum
@@ -317,6 +318,85 @@ async def scan_email(
             )
         )
 
+    domain_intelligence = None
+
+    try:
+        domain_intelligence = await asyncio.to_thread(
+            collect_email_domain_intelligence,
+            normalized_email,
+        )
+
+        dns_table = Table(
+            show_header=False,
+            box=None,
+            padding=(0, 1),
+        )
+
+        dns_table.add_column(
+            "Field",
+            style="bold",
+            no_wrap=True,
+        )
+
+        dns_table.add_column(
+            "Value",
+        )
+
+        dns_table.add_row(
+            "Domain",
+            domain_intelligence["domain"],
+        )
+
+        mx_records = domain_intelligence["mx"]
+
+        if mx_records:
+            mx_value = "\n".join(
+                (
+                    f"{record['priority']} "
+                    f"{record['host']}"
+                )
+                for record in mx_records
+            )
+        else:
+            mx_value = "Not found"
+
+        dns_table.add_row(
+            "MX",
+            mx_value,
+        )
+
+        dns_table.add_row(
+            "SPF",
+            domain_intelligence["spf"]
+            or "Not found",
+        )
+
+        dns_table.add_row(
+            "DMARC",
+            domain_intelligence["dmarc"]
+            or "Not found",
+        )
+
+        console.print(
+            Panel(
+                dns_table,
+                title="DNS Intelligence",
+                border_style="cyan",
+            )
+        )
+
+    except Exception as error:
+        console.print(
+            Panel(
+                (
+                    "[bold red]ERROR[/bold red]"
+                    f"\n{error}"
+                ),
+                title="DNS Intelligence",
+                border_style="red",
+            )
+        )
+
     summary_table = Table(
         title="SCAN SUMMARY",
         box=box.ROUNDED,
@@ -359,6 +439,11 @@ async def scan_email(
         raw_value=raw_email,
         normalized_value=normalized_email,
         evidences=evidence_results,
+        enrichments=(
+            {"dns": domain_intelligence}
+            if domain_intelligence is not None
+            else None
+        ),
     )
 
     console.print(

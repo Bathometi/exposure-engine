@@ -72,3 +72,71 @@ def test_main_scans_all_cli_email_arguments(monkeypatch):
         "first@example.com",
         "second@example.com",
     ]
+
+
+
+@pytest.mark.asyncio
+async def test_email_scan_passes_dns_enrichment_to_report(monkeypatch):
+    class FakeCollector:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(
+            self,
+            exc_type,
+            exc,
+            traceback,
+        ):
+            return False
+
+    dns_result = {
+        "domain": "example.com",
+        "mx": [
+            {
+                "priority": 10,
+                "host": "mail.example.com",
+            }
+        ],
+        "spf": "v=spf1 -all",
+        "dmarc": "v=DMARC1; p=reject",
+    }
+
+    saved_report = {}
+
+    def fake_save_json_report(**kwargs):
+        saved_report.update(kwargs)
+        return "report.json"
+
+    monkeypatch.setattr(
+        check_email,
+        "HTTPCollector",
+        FakeCollector,
+    )
+
+    monkeypatch.setattr(
+        check_email,
+        "EMAIL_PLATFORMS",
+        {},
+    )
+
+    monkeypatch.setattr(
+        check_email,
+        "collect_email_domain_intelligence",
+        lambda email: dns_result,
+    )
+
+    monkeypatch.setattr(
+        check_email,
+        "save_json_report",
+        fake_save_json_report,
+    )
+
+    result = await check_email.scan_email(
+        "User@Example.COM"
+    )
+
+    assert result is True
+    assert saved_report["normalized_value"] == "user@example.com"
+    assert saved_report["enrichments"] == {
+        "dns": dns_result
+    }

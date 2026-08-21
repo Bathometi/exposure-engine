@@ -55,3 +55,37 @@ def test_save_json_report(tmp_path):
     assert result["status"] == "found"
     assert result["confidence"] == "high"
     assert result["details"]["http_status"] == 200
+
+
+
+def test_save_json_report_with_enrichments(tmp_path):
+    enrichments = {
+        "dns": {
+            "domain": "example.com",
+            "mx": [
+                {
+                    "priority": 10,
+                    "host": "mail.example.com",
+                }
+            ],
+            "spf": "v=spf1 -all",
+            "dmarc": "v=DMARC1; p=reject",
+        }
+    }
+
+    output_path = save_json_report(
+        entity_type=EntityType.EMAIL,
+        raw_value="user@example.com",
+        normalized_value="user@example.com",
+        evidences=[],
+        enrichments=enrichments,
+        reports_dir=str(tmp_path),
+    )
+
+    with output_path.open(
+        "r",
+        encoding="utf-8",
+    ) as file:
+        report = json.load(file)
+
+    assert report["enrichments"] == enrichments
