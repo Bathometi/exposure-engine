@@ -1,6 +1,6 @@
 # 🔍 Exposure Engine
 
-**Exposure Engine** is an asynchronous, evidence-based OSINT framework for public username enumeration across multiple platforms.
+**Exposure Engine** is an asynchronous, evidence-based OSINT framework for analyzing public username and email exposure across multiple sources.
 
 The project is built around one core principle:
 
@@ -16,8 +16,10 @@ The project is being developed as a practical Python, OSINT, and cybersecurity l
 
 - Asynchronous scanning with `asyncio` and `aiohttp`
 - Shared HTTP session for concurrent platform checks
-- Input normalization before scanning
-- Pre-flight username validation before HTTP requests
+- Username and email normalization before scanning
+- Pre-flight username and email validation before HTTP requests
+- Email identifier transforms for source-specific lookups
+- Email-domain intelligence via MX, SPF, and DMARC
 - Source-specific detectors
 - Detector Registry for decoupling configuration from detector implementations
 - Explicit result states:
@@ -40,7 +42,7 @@ The project is being developed as a practical Python, OSINT, and cybersecurity l
 
 ---
 
-## 🛠️ Supported Platforms
+## 🛠️ Supported Username Platforms
 
 Exposure Engine currently supports **12 public username sources**.
 
@@ -65,12 +67,50 @@ When a source does not provide enough evidence for a reliable conclusion, Exposu
 
 ---
 
+## ✉️ Supported Email Sources
+
+Exposure Engine currently supports **3 public email sources** plus domain-level DNS enrichment.
+
+| Source | Detection Strategy | Example Evidence |
+| :--- | :--- | :--- |
+| **Gravatar** | Public profile API using normalized email hash | Public profile, name, avatar, location, profile metadata |
+| **HIBP** | Authorized Have I Been Pwned API lookup | Publicly reported breach names and breach count |
+| **GitHub Commits** | Public GitHub Commit Search using exact `author-email:<email>` query | Commit count, linked GitHub users, repositories |
+
+### DNS Intelligence
+
+Email scans also collect domain-level mail infrastructure context:
+
+- MX records
+- SPF record
+- DMARC record
+
+DNS intelligence describes the **email domain**, not the individual mailbox.
+
+For example, MX, SPF, and DMARC results for `user@gmail.com` describe `gmail.com`.
+
+Important OSINT interpretation:
+
+```text
+GitHub Commits FOUND
+≠
+confirmed identity or mailbox ownership
+```
+
+A positive GitHub Commit result means that public GitHub commit metadata was returned for the exact author-email query.
+
+A linked GitHub account is strong public association evidence, but should not be treated as automatic identity confirmation.
+
+HIBP access requires an appropriate API key. A `404` means that the API returned no matching breach records for that query; it does not prove that the address has never appeared in a breach.
+
+---
+
 ## 🚦 Result Statuses
 
 | Status | Meaning |
 | :--- | :--- |
-| `FOUND` | Positive source-specific evidence supports the existence of a public profile |
-| `NOT_FOUND` | Explicit negative evidence supports that the profile does not exist |
+| `FOUND` | Positive source-specific evidence supports a public trace for the requested entity |
+| `NOT_FOUND` | Explicit negative evidence indicates that the source returned no matching trace |
 | `BLOCKED` | The source refused or restricted the request |
 | `RATE_LIMITED` | The source applied a request-rate restriction |
 | `UNKNOWN` | Available evidence is insufficient for a reliable conclusion |
@@ -91,9 +131,9 @@ Same username on multiple platforms
 same person
 ```
 
-A `FOUND` result means that a public digital trace for that username was found on that specific source.
+A `FOUND` result means that source-specific public evidence was found for the requested username or email.
 
-It does **not** confirm that profiles with the same username belong to the same person.
+It does **not** automatically confirm identity, account ownership, or that matching traces across different sources belong to the same person.
 
 ---
 
@@ -113,23 +153,23 @@ Status and confidence are stored together inside a standardized `Evidence` objec
 
 ## 🧹 Normalization and Validation
 
-Username processing happens before network activity.
+Username and email processing happens before network activity.
 
 ```text
 Raw input
     ↓
 Normalizer
     ↓
-UsernameValidator
+Entity Validator
     ↓
 Valid?
  ┌──┴──┐
 No    Yes
 ↓      ↓
-STOP   Scan platforms
+STOP   Scan sources
 ```
 
-The normalizer:
+For usernames, the normalizer:
 
 - removes surrounding whitespace;
 - removes leading `@` characters;
@@ -140,6 +180,19 @@ The global username validator rejects obvious invalid input such as:
 - empty usernames;
 - usernames containing whitespace;
 - excessively long usernames.
+
+For emails, the normalizer:
+
+- removes surrounding whitespace;
+- converts the address to lowercase.
+
+The email validator rejects malformed input before any HTTP requests are made, including:
+
+- empty values;
+- whitespace inside the address;
+- missing or multiple `@` characters;
+- empty local or domain parts;
+- invalid Unicode sequences.
 
 Platform-specific username rules remain separate from the global validator.
 
@@ -181,6 +234,10 @@ python -m pip install -r requirements-dev.txt
 
 ### 4. Run Exposure Engine
 
+#### Username scan
+
+Interactive mode:
+
 ```bash
 python check_username.py
 ```
@@ -195,6 +252,20 @@ A leading `@` is also accepted:
 
 ```text
 @octocat
+```
+
+#### Email scan
+
+Scan a single email address:
+
+```bash
+python check_email.py user@example.com
+```
+
+Multiple email addresses can also be scanned in one command:
+
+```bash
+python check_email.py first@example.com second@example.com
 ```
 
 ---
@@ -219,9 +290,16 @@ Location
 Website
 Karma
 About
+Breach Count
+Breaches
+Commit Count
+Linked Users
+Repositories
 ```
 
 Only metadata actually available from the source is displayed.
+
+Email scans also display a separate `DNS Intelligence` panel with MX, SPF, and DMARC information. These records describe the email domain and should not be interpreted as evidence that a specific mailbox exists.
 
 At the end of a completed scan, the CLI generates a summary for:
 
@@ -254,7 +332,9 @@ Each report contains:
 - status and confidence;
 - collected metadata;
 - HTTP information;
-- detector limitations.
+- detector limitations;
+- optional enrichments such as email-domain DNS intelligence;
+- source-specific metadata such as GitHub commit count, linked users, and repositories.
 
 Example structure:
 
@@ -270,6 +350,8 @@ Example structure:
   "results": []
 }
 ```
+
+Email reports may also include an `enrichments` object. DNS intelligence is stored under `enrichments.dns`, while GitHub Commit Footprint data is preserved inside the relevant `results[].details` object.
 
 Generated reports are excluded from Git through `.gitignore`.
 
@@ -288,7 +370,7 @@ python -m pytest -q
 Current local suite:
 
 ```text
-97 passed
+164 passed
 1 integration test deselected
 ```
 
@@ -303,6 +385,10 @@ Current test coverage includes:
 - schema tests;
 - normalization tests;
 - username validation tests;
+- email validation and malformed-Unicode tests;
+- email identifier tests;
+- email DNS intelligence tests;
+- GitHub email commit-footprint tests;
 - detector tests;
 - detector registry tests;
 - platform configuration tests;
@@ -324,29 +410,73 @@ The regression matrix currently covers all **12 configured platforms** with posi
 
 ## 🏗️ Architecture
 
-High-level username flow:
+High-level entity flow:
 
 ```text
-Raw Username
-     ↓
+Raw Input
+    ↓
 Normalizer
-     ↓
-UsernameValidator
-     ↓
-Platform Configuration
-     ↓
+    ↓
+Entity Validator
+    ↓
+Source Configuration
+    ↓
 Shared HTTPCollector
-     ↓
+    ↓
 Detector Registry
-     ↓
-Platform Detector
-     ↓
+    ↓
+Source Detector
+    ↓
 Evidence
-     ↓
-┌─────────────┬─────────────┐
-│             │             │
-Rich CLI   JSON Report   Summary
+    ↓
+┌─────────────┬─────────────┬─────────────┐
+│             │             │             │
+Rich CLI   JSON Report    Summary
 ```
+
+### Username flow
+
+Username scans use the configured public username platforms and source-specific detectors.
+
+```text
+Username
+   ↓
+Normalize + Validate
+   ↓
+12 Username Sources
+   ↓
+Concurrent HTTP Checks
+   ↓
+Evidence
+```
+
+### Email flow
+
+Email scans combine source-specific HTTP evidence with separate domain-level DNS enrichment.
+
+```text
+Email
+  ↓
+Normalize + Validate
+  ↓
+3 Email Sources
+  ├── Gravatar
+  ├── HIBP
+  └── GitHub Commits
+  ↓
+Concurrent HTTP Checks
+  ↓
+Evidence Results
+  ↓
+DNS Intelligence
+(MX / SPF / DMARC)
+  ↓
+Rich CLI + JSON Report + Summary
+```
+
+GitHub Commit Footprint uses query parameters such as `author-email:<email>` and is interpreted by its own detector.
+
+DNS enrichment is collected separately from source evidence and stored under `enrichments.dns` in email JSON reports.
 
 ### HTTP lifecycle
 
@@ -412,7 +542,7 @@ only tells us that the server returned a successful HTTP response.
 
 It does not necessarily prove that the requested account exists.
 
-A platform detector evaluates the actual source-specific evidence before assigning a status and confidence level.
+A source-specific detector evaluates the available evidence before assigning a status and confidence level.
 
 ---
 
@@ -452,9 +582,9 @@ ERROR / LOW confidence
 
 ## 🔎 Detection Philosophy
 
-Username enumeration contains many edge cases.
+Public exposure analysis contains many edge cases.
 
-Different platforms may:
+Different sources may:
 
 - return `HTTP 200` for a missing account;
 - return `404` for an explicitly missing account;
@@ -488,6 +618,8 @@ exposure-engine/
 │   ├── collector.py
 │   ├── detector_registry.py
 │   ├── detectors.py
+│   ├── dns_intelligence.py
+│   ├── identifiers.py
 │   ├── normalizer.py
 │   ├── reporting.py
 │   ├── schema.py
@@ -499,6 +631,10 @@ exposure-engine/
 │   ├── test_collector.py
 │   ├── test_detector_registry.py
 │   ├── test_detectors.py
+│   ├── test_email_cli_validation.py
+│   ├── test_email_dns.py
+│   ├── test_email_identifier.py
+│   ├── test_email_validator.py
 │   ├── test_normalizer.py
 │   ├── test_platform_config.py
 │   ├── test_regression_matrix.py
@@ -508,6 +644,8 @@ exposure-engine/
 │   └── test_username_validator.py
 │
 ├── reports/              # generated locally, ignored by Git
+├── .gitignore
+├── check_email.py
 ├── check_username.py
 ├── pytest.ini
 ├── requirements.txt
@@ -540,14 +678,14 @@ Results should be interpreted as **source-specific evidence**, not automatic ide
 
 ## 🎯 Roadmap
 
-The current development phase is focused on stabilizing the **USERNAME** engine.
+The **USERNAME v1** engine is stable. Current development is focused on expanding and stabilizing **EMAIL** exposure analysis.
 
 ```text
-carefully validated username sources
+USERNAME v1 stable
         ↓
-USERNAME v1 stabilization
+EMAIL analysis
         ↓
-EMAIL entity support
+additional validated email exposure signals
         ↓
 PHONE entity support
         ↓
@@ -571,27 +709,32 @@ Exposure Engine is intended for:
 
 Use the project only in accordance with applicable laws, platform policies, and authorization requirements.
 
-The project is not intended for unauthorized access, bypassing technical restrictions, or identity attribution based only on username similarity.
+The project is not intended for unauthorized access, bypassing technical restrictions, or identity attribution based only on username similarity or a single matching public trace.
 
 ---
 
 ## 📌 Current Status
 
-**Work in progress — USERNAME engine stabilization.**
+**Work in progress — EMAIL exposure analysis and framework expansion.**
 
 Current state:
 
 ```text
-12 username sources
-105 local tests
-1 integration test
-24 regression scenarios
-Input normalization
-Username pre-flight validation
+12 stable username sources
+3 email sources
+DNS intelligence: MX / SPF / DMARC
+Email normalization + pre-flight validation
+GitHub Commit Footprint
+Gravatar public profile lookup
+HIBP API integration
+Batch email scanning
 Shared aiohttp ClientSession
 Detector Registry
 Source-specific detectors
+Query-parameter support
 Retry + exponential backoff
 Rich CLI
-JSON reporting
+Structured JSON reporting
+164 local tests passing
+1 integration test deselected by default
 ```
