@@ -107,5 +107,16 @@ EMAIL_PLATFORMS = {
         "headers_from_env": {
             "hibp-api-key": "HIBP_API_KEY",
         },
-    }
+    },
+
+    "GitHub Commits": {
+        "url_template": (
+            "https://api.github.com/search/commits"
+        ),
+        "query_params": {
+            "q": "author-email:{value}",
+            "per_page": "100",
+        },
+        "detector": "github_commits",
+    },
 }

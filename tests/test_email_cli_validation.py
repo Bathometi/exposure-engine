@@ -140,3 +140,122 @@ async def test_email_scan_passes_dns_enrichment_to_report(monkeypatch):
     assert saved_report["enrichments"] == {
         "dns": dns_result
     }
+
+
+@pytest.mark.asyncio
+async def test_email_cli_shows_github_commit_details(
+    monkeypatch,
+):
+    from io import StringIO
+
+    from rich.console import Console
+
+    from core.schema import (
+        ConfidenceLevel,
+        EntityType,
+        Evidence,
+        StatusEnum,
+    )
+
+    class FakeCollector:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(
+            self,
+            exc_type,
+            exc,
+            traceback,
+        ):
+            return False
+
+        async def check_platform(
+            self,
+            **kwargs,
+        ):
+            return Evidence(
+                entity_type=EntityType.EMAIL,
+                raw_value="user@example.com",
+                normalized_value="user@example.com",
+                source_name="GitHub Commits",
+                status=StatusEnum.FOUND,
+                confidence=ConfidenceLevel.HIGH,
+                details={
+                    "http_status": 200,
+                    "target_url": (
+                        "https://api.github.com/search/commits"
+                    ),
+                    "commit_count": 71,
+                    "linked_users": [
+                        "example-user",
+                    ],
+                    "repositories": [
+                        "example/repo-one",
+                        "example/repo-two",
+                    ],
+                },
+                limitations=(
+                    "Status determined via "
+                    "github_commits detector."
+                ),
+            )
+
+    output = StringIO()
+
+    monkeypatch.setattr(
+        check_email,
+        "console",
+        Console(
+            file=output,
+            force_terminal=False,
+            width=200,
+        ),
+    )
+
+    monkeypatch.setattr(
+        check_email,
+        "HTTPCollector",
+        FakeCollector,
+    )
+
+    monkeypatch.setattr(
+        check_email,
+        "EMAIL_PLATFORMS",
+        {
+            "GitHub Commits": {
+                "detector": "github_commits",
+            }
+        },
+    )
+
+    monkeypatch.setattr(
+        check_email,
+        "collect_email_domain_intelligence",
+        lambda email: {
+            "domain": "example.com",
+            "mx": [],
+            "spf": None,
+            "dmarc": None,
+        },
+    )
+
+    monkeypatch.setattr(
+        check_email,
+        "save_json_report",
+        lambda **kwargs: "report.json",
+    )
+
+    result = await check_email.scan_email(
+        "user@example.com"
+    )
+
+    rendered = output.getvalue()
+
+    assert result is True
+    assert "Commit Count" in rendered
+    assert "71" in rendered
+    assert "Linked Users" in rendered
+    assert "example-user" in rendered
+    assert "Repositories" in rendered
+    assert "example/repo-one" in rendered
+    assert "example/repo-two" in rendered

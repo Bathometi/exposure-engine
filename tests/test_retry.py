@@ -45,7 +45,7 @@ async def test_retry_uses_exponential_backoff(monkeypatch):
         async def __aexit__(self, exc_type, exc, tb):
             return False
 
-        def get(self, url, headers=None, allow_redirects=True):
+        def get(self, url, headers=None, params=None, allow_redirects=True):
             state["requests"] += 1
             status = statuses.pop(0)
 
@@ -119,7 +119,7 @@ async def test_exhausted_server_retries_return_error(monkeypatch):
         async def __aexit__(self, exc_type, exc, tb):
             return False
 
-        def get(self, url, headers=None, allow_redirects=True):
+        def get(self, url, headers=None, params=None, allow_redirects=True):
             state["requests"] += 1
             status = statuses.pop(0)
 

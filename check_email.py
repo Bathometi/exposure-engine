@@ -304,6 +304,36 @@ async def scan_email(
                     ", ".join(breaches),
                 )
 
+            add_detail_row(
+                table,
+                "Commit Count",
+                details.get(
+                    "commit_count"
+                ),
+            )
+
+            linked_users = details.get(
+                "linked_users"
+            )
+
+            if linked_users:
+                add_detail_row(
+                    table,
+                    "Linked Users",
+                    ", ".join(linked_users),
+                )
+
+            repositories = details.get(
+                "repositories"
+            )
+
+            if repositories:
+                add_detail_row(
+                    table,
+                    "Repositories",
+                    "\n".join(repositories),
+                )
+
         add_detail_row(
             table,
             "Note",

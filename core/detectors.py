@@ -978,3 +978,135 @@ class HIBPDetector(BaseDetector):
             ConfidenceLevel.LOW,
             {},
         )
+
+
+class GitHubCommitDetector(BaseDetector):
+    @staticmethod
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                {},
+            )
+
+        if (
+            status_code == 403
+            and isinstance(response_data, dict)
+            and "rate limit" in str(
+                response_data.get("message", "")
+            ).lower()
+        ):
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                {},
+            )
+
+        if status_code == 403:
+            return (
+                StatusEnum.BLOCKED,
+                ConfidenceLevel.MEDIUM,
+                {},
+            )
+
+        if status_code != 200:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                {},
+            )
+
+        if not isinstance(response_data, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                {},
+            )
+
+        total_count = response_data.get(
+            "total_count"
+        )
+        items = response_data.get(
+            "items"
+        )
+
+        if (
+            not isinstance(total_count, int)
+            or not isinstance(items, list)
+        ):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                {},
+            )
+
+        if total_count == 0:
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                {
+                    "commit_count": 0,
+                    "linked_users": [],
+                    "repositories": [],
+                },
+            )
+
+        if total_count < 0 or not items:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                {},
+            )
+
+        repositories = []
+        linked_users = []
+
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+
+            repository = item.get("repository")
+
+            if isinstance(repository, dict):
+                full_name = repository.get(
+                    "full_name"
+                )
+
+                if (
+                    full_name
+                    and full_name not in repositories
+                ):
+                    repositories.append(
+                        full_name
+                    )
+
+            author = item.get("author")
+
+            if isinstance(author, dict):
+                login = author.get("login")
+
+                if (
+                    login
+                    and login not in linked_users
+                ):
+                    linked_users.append(
+                        login
+                    )
+
+        return (
+            StatusEnum.FOUND,
+            ConfidenceLevel.HIGH,
+            {
+                "commit_count": total_count,
+                "linked_users": linked_users,
+                "repositories": repositories,
+            },
+        )

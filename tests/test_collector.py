@@ -260,3 +260,51 @@ async def test_collector_passes_env_headers_to_request(
     assert FakeSession.last_get_kwargs["headers"] == {
         "hibp-api-key": "test-api-key",
     }
+
+
+
+@pytest.mark.asyncio
+async def test_collector_passes_query_params_to_request(
+    monkeypatch,
+):
+    collector = HTTPCollector()
+
+    monkeypatch.setitem(
+        DETECTOR_REGISTRY,
+        "query_test",
+        {
+            "detector": StatusCodeDetector,
+            "response_type": "xml",
+        },
+    )
+
+    monkeypatch.setattr(
+        "core.collector.aiohttp.ClientSession",
+        FakeSession,
+    )
+
+    FakeSession.last_get_kwargs = None
+
+    platform_config = {
+        "url_template": (
+            "https://api.github.com/search/commits"
+        ),
+        "detector": "query_test",
+        "query_params": {
+            "q": "author-email:{value}",
+            "per_page": "100",
+        },
+    }
+
+    await collector.check_platform(
+        entity_type=EntityType.EMAIL,
+        raw_value="User@Example.COM",
+        normalized_value="user@example.com",
+        source_name="GitHub Commits",
+        platform_config=platform_config,
+    )
+
+    assert FakeSession.last_get_kwargs["params"] == {
+        "q": "author-email:user@example.com",
+        "per_page": "100",
+    }

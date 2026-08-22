@@ -11,6 +11,7 @@ from core.detectors import (
     HackerNewsDetector,
     GravatarDetector,
     HIBPDetector,
+    GitHubCommitDetector,
     HuggingFaceDetector,
     KeybaseDetector,
     LichessDetector,
@@ -160,3 +161,30 @@ def test_hibp_is_registered_correctly():
         DETECTOR_REGISTRY["hibp"]["response_type"]
         == "json"
     )
+
+
+
+def test_github_commits_is_registered_correctly():
+    assert (
+        DETECTOR_REGISTRY["github_commits"]["detector"]
+        is GitHubCommitDetector
+    )
+
+    assert (
+        DETECTOR_REGISTRY["github_commits"]["response_type"]
+        == "json"
+    )
+
+
+
+def test_github_commits_email_source_is_configured():
+    config = EMAIL_PLATFORMS["GitHub Commits"]
+
+    assert config["url_template"] == (
+        "https://api.github.com/search/commits"
+    )
+    assert config["detector"] == "github_commits"
+    assert config["query_params"] == {
+        "q": "author-email:{value}",
+        "per_page": "100",
+    }

@@ -5,6 +5,7 @@ from core.detectors import (
     HackerNewsDetector,
     GravatarDetector,
     HIBPDetector,
+    GitHubCommitDetector,
     HuggingFaceDetector,
     KeybaseDetector,
     LichessDetector,
@@ -65,6 +66,11 @@ DETECTOR_REGISTRY = {
     },
     "hibp": {
         "detector": HIBPDetector,
+        "response_type": "json",
+    },
+
+    "github_commits": {
+        "detector": GitHubCommitDetector,
         "response_type": "json",
     },
 }

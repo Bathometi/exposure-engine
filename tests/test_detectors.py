@@ -5,6 +5,7 @@ from core.detectors import (
     HackerNewsDetector,
     GravatarDetector,
     HIBPDetector,
+    GitHubCommitDetector,
     ChessComDetector,
     HuggingFaceDetector,
     StatusCodeDetector,
@@ -548,4 +549,128 @@ def test_hibp_401_is_error():
 
     assert status == StatusEnum.ERROR
     assert confidence == ConfidenceLevel.LOW
+    assert details == {}
+
+
+
+def test_github_commit_search_is_found():
+    response_data = {
+        "total_count": 2,
+        "incomplete_results": False,
+        "items": [
+            {
+                "html_url": "https://github.com/example/repo-one/commit/abc123",
+                "commit": {
+                    "author": {
+                        "name": "Example User",
+                        "email": "user@example.com",
+                        "date": "2026-08-20T10:00:00Z",
+                    },
+                    "message": "First commit",
+                },
+                "author": {
+                    "login": "example-user",
+                },
+                "repository": {
+                    "full_name": "example/repo-one",
+                },
+            },
+            {
+                "html_url": "https://github.com/example/repo-two/commit/def456",
+                "commit": {
+                    "author": {
+                        "name": "Example User",
+                        "email": "user@example.com",
+                        "date": "2026-08-21T10:00:00Z",
+                    },
+                    "message": "Second commit",
+                },
+                "author": {
+                    "login": "example-user",
+                },
+                "repository": {
+                    "full_name": "example/repo-two",
+                },
+            },
+        ],
+    }
+
+    status, confidence, details = GitHubCommitDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details["commit_count"] == 2
+    assert details["linked_users"] == ["example-user"]
+    assert details["repositories"] == [
+        "example/repo-one",
+        "example/repo-two",
+    ]
+
+
+
+def test_github_commit_search_empty_is_not_found():
+    response_data = {
+        "total_count": 0,
+        "incomplete_results": False,
+        "items": [],
+    }
+
+    status, confidence, details = GitHubCommitDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.NOT_FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {
+        "commit_count": 0,
+        "linked_users": [],
+        "repositories": [],
+    }
+
+
+
+def test_github_commit_search_429_is_rate_limited():
+    status, confidence, details = GitHubCommitDetector.detect(
+        429,
+        None,
+    )
+
+    assert status == StatusEnum.RATE_LIMITED
+    assert confidence == ConfidenceLevel.MEDIUM
+    assert details == {}
+
+
+
+def test_github_commit_search_403_rate_limit_is_rate_limited():
+    response_data = {
+        "message": "API rate limit exceeded"
+    }
+
+    status, confidence, details = GitHubCommitDetector.detect(
+        403,
+        response_data,
+    )
+
+    assert status == StatusEnum.RATE_LIMITED
+    assert confidence == ConfidenceLevel.MEDIUM
+    assert details == {}
+
+
+
+def test_github_commit_search_403_is_blocked():
+    response_data = {
+        "message": "Resource access denied"
+    }
+
+    status, confidence, details = GitHubCommitDetector.detect(
+        403,
+        response_data,
+    )
+
+    assert status == StatusEnum.BLOCKED
+    assert confidence == ConfidenceLevel.MEDIUM
     assert details == {}

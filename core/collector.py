@@ -105,6 +105,29 @@ class HTTPCollector:
 
         return headers
 
+    def _resolve_query_params(
+        self,
+        platform_config: Dict[str, Any],
+        request_value: str,
+    ) -> Dict[str, Any]:
+        params = {}
+
+        for param_name, template in (
+            platform_config.get(
+                "query_params",
+                {},
+            ).items()
+        ):
+            if isinstance(template, str):
+                params[param_name] = template.format(
+                    username=request_value,
+                    value=request_value,
+                )
+            else:
+                params[param_name] = template
+
+        return params
+
     async def check_platform(
         self,
         entity_type: EntityType,
@@ -133,6 +156,11 @@ class HTTPCollector:
         )
         request_headers = self._resolve_request_headers(
             platform_config
+        )
+
+        request_params = self._resolve_query_params(
+            platform_config,
+            request_value,
         )
 
         detector_name = platform_config.get(
@@ -179,6 +207,7 @@ class HTTPCollector:
                     async with session.get(
                         url,
                         headers=request_headers,
+                        params=request_params,
                         allow_redirects=True,
                     ) as response:
 
