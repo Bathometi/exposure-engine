@@ -362,9 +362,31 @@ async def scan_email(
                         "unknown",
                     )
 
+                    display_sha = (
+                        sha[:7]
+                        if isinstance(sha, str)
+                        else str(sha)
+                    )
+
+                    display_date = author_date
+
+                    if (
+                        isinstance(author_date, str)
+                        and "T" in author_date
+                        and author_date.endswith("Z")
+                    ):
+                        date_part, time_part = author_date.split(
+                            "T",
+                            1,
+                        )
+                        display_date = (
+                            f"{date_part} "
+                            f"{time_part[:5]} UTC"
+                        )
+
                     formatted_commits.append(
                         f"{repository}\n"
-                        f"{sha} • {author_date}\n"
+                        f"{display_sha} • {display_date}\n"
                         f"{url}"
                     )
 

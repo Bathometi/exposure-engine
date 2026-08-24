@@ -196,9 +196,9 @@ async def test_email_cli_shows_github_commit_details(
                     "sample_commits": [
                         {
                             "repository": "example/repo-one",
-                            "sha": "abc123",
+                            "sha": "abc123def4567890",
                             "author_date": "2026-08-20T10:00:00Z",
-                            "url": "https://github.com/example/repo-one/commit/abc123",
+                            "url": "https://github.com/example/repo-one/commit/abc123def4567890",
                         },
                     ],
                 },
@@ -268,6 +268,6 @@ async def test_email_cli_shows_github_commit_details(
     assert "example/repo-one" in rendered
     assert "example/repo-two" in rendered
     assert "Sample Commits" in rendered
-    assert "abc123" in rendered
-    assert "2026-08-20T10:00:00Z" in rendered
-    assert "https://github.com/example/repo-one/commit/abc123" in rendered
+    assert "abc123d • 2026-08-20 10:00 UTC" in rendered
+    assert "2026-08-20T10:00:00Z" not in rendered
+    assert "https://github.com/example/repo-one/commit/abc123def4567890" in rendered
