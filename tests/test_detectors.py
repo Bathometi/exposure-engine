@@ -559,6 +559,7 @@ def test_github_commit_search_is_found():
         "incomplete_results": False,
         "items": [
             {
+                "sha": "abc123",
                 "html_url": "https://github.com/example/repo-one/commit/abc123",
                 "commit": {
                     "author": {
@@ -576,6 +577,7 @@ def test_github_commit_search_is_found():
                 },
             },
             {
+                "sha": "def456",
                 "html_url": "https://github.com/example/repo-two/commit/def456",
                 "commit": {
                     "author": {
@@ -607,6 +609,20 @@ def test_github_commit_search_is_found():
     assert details["repositories"] == [
         "example/repo-one",
         "example/repo-two",
+    ]
+    assert details["sample_commits"] == [
+        {
+            "repository": "example/repo-one",
+            "sha": "abc123",
+            "author_date": "2026-08-20T10:00:00Z",
+            "url": "https://github.com/example/repo-one/commit/abc123",
+        },
+        {
+            "repository": "example/repo-two",
+            "sha": "def456",
+            "author_date": "2026-08-21T10:00:00Z",
+            "url": "https://github.com/example/repo-two/commit/def456",
+        },
     ]
 
 

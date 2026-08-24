@@ -334,6 +334,49 @@ async def scan_email(
                     "\n".join(repositories),
                 )
 
+            sample_commits = details.get(
+                "sample_commits"
+            )
+
+            if sample_commits:
+                formatted_commits = []
+
+                for sample in sample_commits:
+                    if not isinstance(sample, dict):
+                        continue
+
+                    repository = sample.get(
+                        "repository",
+                        "unknown",
+                    )
+                    sha = sample.get(
+                        "sha",
+                        "unknown",
+                    )
+                    author_date = sample.get(
+                        "author_date",
+                        "unknown",
+                    )
+                    url = sample.get(
+                        "url",
+                        "unknown",
+                    )
+
+                    formatted_commits.append(
+                        f"{repository}\n"
+                        f"{sha} • {author_date}\n"
+                        f"{url}"
+                    )
+
+                if formatted_commits:
+                    add_detail_row(
+                        table,
+                        "Sample Commits",
+                        "\n\n".join(
+                            formatted_commits
+                        ),
+                    )
+
         add_detail_row(
             table,
             "Note",

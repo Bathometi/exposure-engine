@@ -1068,11 +1068,13 @@ class GitHubCommitDetector(BaseDetector):
 
         repositories = []
         linked_users = []
+        sample_commits = []
 
         for item in items:
             if not isinstance(item, dict):
                 continue
 
+            full_name = None
             repository = item.get("repository")
 
             if isinstance(repository, dict):
@@ -1101,6 +1103,36 @@ class GitHubCommitDetector(BaseDetector):
                         login
                     )
 
+            commit = item.get("commit")
+            commit_author = (
+                commit.get("author")
+                if isinstance(commit, dict)
+                else None
+            )
+            author_date = (
+                commit_author.get("date")
+                if isinstance(commit_author, dict)
+                else None
+            )
+            sha = item.get("sha")
+            url = item.get("html_url")
+
+            if (
+                len(sample_commits) < 5
+                and full_name
+                and sha
+                and author_date
+                and url
+            ):
+                sample_commits.append(
+                    {
+                        "repository": full_name,
+                        "sha": sha,
+                        "author_date": author_date,
+                        "url": url,
+                    }
+                )
+
         return (
             StatusEnum.FOUND,
             ConfidenceLevel.HIGH,
@@ -1108,5 +1140,6 @@ class GitHubCommitDetector(BaseDetector):
                 "commit_count": total_count,
                 "linked_users": linked_users,
                 "repositories": repositories,
+                "sample_commits": sample_commits,
             },
         )
