@@ -6,6 +6,7 @@ from core.detectors import (
     GravatarDetector,
     HIBPDetector,
     GitHubCommitDetector,
+    OpenPGPDetector,
     HuggingFaceDetector,
     KeybaseDetector,
     LichessDetector,
@@ -72,5 +73,9 @@ DETECTOR_REGISTRY = {
     "github_commits": {
         "detector": GitHubCommitDetector,
         "response_type": "json",
+    },
+    "openpgp": {
+        "detector": OpenPGPDetector,
+        "response_type": "text",
     },
 }

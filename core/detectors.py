@@ -1143,3 +1143,49 @@ class GitHubCommitDetector(BaseDetector):
                 "sample_commits": sample_commits,
             },
         )
+
+class OpenPGPDetector(BaseDetector):
+    @staticmethod
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                {},
+            )
+
+        if status_code == 404:
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                {
+                    "public_key_available": False,
+                },
+            )
+
+        if (
+            status_code == 200
+            and isinstance(response_data, str)
+            and "-----BEGIN PGP PUBLIC KEY BLOCK-----" in response_data
+            and "-----END PGP PUBLIC KEY BLOCK-----" in response_data
+        ):
+            return (
+                StatusEnum.FOUND,
+                ConfidenceLevel.HIGH,
+                {
+                    "public_key_available": True,
+                },
+            )
+
+        return (
+            StatusEnum.UNKNOWN,
+            ConfidenceLevel.LOW,
+            {},
+        )

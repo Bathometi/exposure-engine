@@ -12,6 +12,7 @@ from core.detectors import (
     GravatarDetector,
     HIBPDetector,
     GitHubCommitDetector,
+    OpenPGPDetector,
     HuggingFaceDetector,
     KeybaseDetector,
     LichessDetector,
@@ -188,3 +189,23 @@ def test_github_commits_email_source_is_configured():
         "q": "author-email:{value}",
         "per_page": "100",
     }
+
+def test_openpgp_is_registered_correctly():
+    assert (
+        DETECTOR_REGISTRY["openpgp"]["detector"]
+        is OpenPGPDetector
+    )
+
+    assert (
+        DETECTOR_REGISTRY["openpgp"]["response_type"]
+        == "text"
+    )
+
+
+def test_openpgp_email_source_is_configured():
+    config = EMAIL_PLATFORMS["OpenPGP"]
+
+    assert config["url_template"] == (
+        "https://keys.openpgp.org/vks/v1/by-email/{value}"
+    )
+    assert config["detector"] == "openpgp"

@@ -119,4 +119,11 @@ EMAIL_PLATFORMS = {
         },
         "detector": "github_commits",
     },
+
+    "OpenPGP": {
+        "url_template": (
+            "https://keys.openpgp.org/vks/v1/by-email/{value}"
+        ),
+        "detector": "openpgp",
+    },
 }

@@ -6,6 +6,7 @@ from core.detectors import (
     GravatarDetector,
     HIBPDetector,
     GitHubCommitDetector,
+    OpenPGPDetector,
     ChessComDetector,
     HuggingFaceDetector,
     StatusCodeDetector,
@@ -688,5 +689,51 @@ def test_github_commit_search_403_is_blocked():
     )
 
     assert status == StatusEnum.BLOCKED
+    assert confidence == ConfidenceLevel.MEDIUM
+    assert details == {}
+
+
+
+def test_openpgp_200_is_found():
+    response_data = (
+        "-----BEGIN PGP PUBLIC KEY BLOCK-----\n"
+        "example\n"
+        "-----END PGP PUBLIC KEY BLOCK-----"
+    )
+
+    status, confidence, details = OpenPGPDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {
+        "public_key_available": True,
+    }
+
+
+
+def test_openpgp_404_is_not_found():
+    status, confidence, details = OpenPGPDetector.detect(
+        404,
+        None,
+    )
+
+    assert status == StatusEnum.NOT_FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {
+        "public_key_available": False,
+    }
+
+
+
+def test_openpgp_429_is_rate_limited():
+    status, confidence, details = OpenPGPDetector.detect(
+        429,
+        None,
+    )
+
+    assert status == StatusEnum.RATE_LIMITED
     assert confidence == ConfidenceLevel.MEDIUM
     assert details == {}
