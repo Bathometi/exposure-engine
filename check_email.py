@@ -10,9 +10,10 @@ from rich.table import Table
 from config.platforms import EMAIL_PLATFORMS
 from core.collector import HTTPCollector
 from core.dns_intelligence import collect_email_domain_intelligence
+from core.email_summary import EmailExposureSummary
 from core.normalizer import Normalizer
 from core.reporting import save_json_report
-from core.schema import EntityType, StatusEnum
+from core.schema import ConfidenceLevel, EntityType, Evidence, StatusEnum
 from core.validators import EmailValidator
 
 
@@ -151,18 +152,22 @@ async def scan_email(
             result,
             Exception,
         ):
-            console.print(
-                Panel(
-                    (
-                        "[bold red]ERROR[/bold red]"
-                        f"\n{result}"
-                    ),
-                    title=source_name,
-                    border_style="red",
-                )
+            result = Evidence(
+                entity_type=EntityType.EMAIL,
+                raw_value=raw_email,
+                normalized_value=normalized_email,
+                source_name=source_name,
+                status=StatusEnum.ERROR,
+                confidence=ConfidenceLevel.LOW,
+                details={
+                    "exception_type": type(result).__name__,
+                },
+                limitations=(
+                    "Source check failed with "
+                    f"{type(result).__name__}."
+                ),
             )
 
-            continue
 
         evidence_results.append(
             result
@@ -412,6 +417,57 @@ async def scan_email(
                 border_style=style,
             )
         )
+
+    email_summary = EmailExposureSummary.build(
+        evidence_results
+    )
+
+    summary_table = Table(
+        show_header=False,
+        box=None,
+        padding=(0, 1),
+     )
+
+    summary_table.add_column(
+        "Field",
+        style="bold",
+        no_wrap=True,
+     )
+    summary_table.add_column(
+        "Value",
+     )
+
+    summary_table.add_row(
+        "Checked Sources",
+        str(email_summary["checked_source_count"]),
+     )
+    summary_table.add_row(
+        "Public Traces",
+        str(email_summary["public_trace_count"]),
+    )
+    summary_table.add_row(
+        "Found",
+        ", ".join(email_summary["found_sources"]) or "—",
+     )
+    summary_table.add_row(
+        "Not Found",
+        ", ".join(email_summary["not_found_sources"]) or "—",
+    )
+    summary_table.add_row(
+        "Unavailable",
+        ", ".join(email_summary["unavailable_sources"]) or "—",
+    )
+    summary_table.add_row(
+        "Uncertain",
+        ", ".join(email_summary["uncertain_sources"]) or "—",
+    )
+
+    console.print(
+        Panel(
+            summary_table,
+            title="EMAIL EXPOSURE SUMMARY",
+        )
+    )
 
     domain_intelligence = None
 

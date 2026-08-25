@@ -271,3 +271,127 @@ async def test_email_cli_shows_github_commit_details(
     assert "abc123d • 2026-08-20 10:00 UTC" in rendered
     assert "2026-08-20T10:00:00Z" not in rendered
     assert "https://github.com/example/repo-one/commit/abc123def4567890" in rendered
+    assert "EMAIL EXPOSURE SUMMARY" in rendered
+    assert "Checked Sources" in rendered
+    assert "Public Traces" in rendered
+
+
+@pytest.mark.asyncio
+async def test_email_cli_preserves_source_exception_as_error_evidence(
+    monkeypatch,
+):
+    from io import StringIO
+
+    from rich.console import Console
+
+    from core.schema import (
+        ConfidenceLevel,
+        EntityType,
+        Evidence,
+        StatusEnum,
+    )
+
+    class FakeCollector:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(
+            self,
+            exc_type,
+            exc,
+            traceback,
+        ):
+            return False
+
+        async def check_platform(
+            self,
+            source_name,
+            **kwargs,
+        ):
+            if source_name == "HIBP":
+                raise RuntimeError("temporary API failure")
+
+            return Evidence(
+                entity_type=EntityType.EMAIL,
+                raw_value="user@example.com",
+                normalized_value="user@example.com",
+                source_name=source_name,
+                status=StatusEnum.FOUND,
+                confidence=ConfidenceLevel.HIGH,
+            )
+
+    output = StringIO()
+    captured_report = {}
+
+    monkeypatch.setattr(
+        check_email,
+        "console",
+        Console(
+            file=output,
+            force_terminal=False,
+            width=200,
+        ),
+    )
+
+    monkeypatch.setattr(
+        check_email,
+        "HTTPCollector",
+        FakeCollector,
+    )
+
+    monkeypatch.setattr(
+        check_email,
+        "EMAIL_PLATFORMS",
+        {
+            "GitHub Commits": {
+                "detector": "github_commits",
+            },
+            "HIBP": {
+                "detector": "hibp",
+            },
+        },
+    )
+
+    monkeypatch.setattr(
+        check_email,
+        "collect_email_domain_intelligence",
+        lambda email: {
+            "domain": "example.com",
+            "mx": [],
+            "spf": None,
+            "dmarc": None,
+        },
+    )
+
+    def fake_save_json_report(**kwargs):
+        captured_report.update(kwargs)
+        return "report.json"
+
+    monkeypatch.setattr(
+        check_email,
+        "save_json_report",
+        fake_save_json_report,
+    )
+
+    result = await check_email.scan_email(
+        "user@example.com"
+    )
+
+    rendered = output.getvalue()
+    evidences = captured_report["evidences"]
+
+    assert result is True
+    assert "Checked Sources" in rendered
+    assert "2" in rendered
+    assert "Unavailable" in rendered
+    assert "HIBP" in rendered
+    assert len(evidences) == 2
+
+    hibp_evidence = next(
+        evidence
+        for evidence in evidences
+        if evidence.source_name == "HIBP"
+    )
+
+    assert hibp_evidence.status == StatusEnum.ERROR
+    assert hibp_evidence.confidence == ConfidenceLevel.LOW
