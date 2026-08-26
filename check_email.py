@@ -595,6 +595,9 @@ async def scan_email(
             if domain_intelligence is not None
             else None
         ),
+        analysis={
+            "email_exposure_summary": email_summary,
+        },
     )
 
     console.print(

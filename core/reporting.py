@@ -24,6 +24,7 @@ def save_json_report(
     normalized_value: str,
     evidences: Iterable[Evidence],
     enrichments: dict | None = None,
+    analysis: dict | None = None,
     reports_dir: str = "reports",
 ) -> Path:
     reports_path = Path(reports_dir)
@@ -71,6 +72,9 @@ def save_json_report(
 
     if enrichments is not None:
         report["enrichments"] = enrichments
+
+    if analysis is not None:
+        report["analysis"] = analysis
 
     with output_path.open(
         "w",

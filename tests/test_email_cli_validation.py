@@ -141,6 +141,17 @@ async def test_email_scan_passes_dns_enrichment_to_report(monkeypatch):
         "dns": dns_result
     }
 
+    assert saved_report["analysis"] == {
+        "email_exposure_summary": {
+            "public_trace_count": 0,
+            "checked_source_count": 0,
+            "found_sources": [],
+            "not_found_sources": [],
+            "unavailable_sources": [],
+            "uncertain_sources": [],
+        }
+    }
+
 
 @pytest.mark.asyncio
 async def test_email_cli_shows_github_commit_details(

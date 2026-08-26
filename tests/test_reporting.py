@@ -89,3 +89,34 @@ def test_save_json_report_with_enrichments(tmp_path):
         report = json.load(file)
 
     assert report["enrichments"] == enrichments
+def test_save_json_report_with_analysis(tmp_path):
+    analysis = {
+        "email_exposure_summary": {
+            "checked_source_count": 4,
+            "public_trace_count": 1,
+            "found_sources": ["GitHub Commits"],
+            "not_found_sources": [
+                "Gravatar",
+                "OpenPGP",
+            ],
+            "unavailable_sources": ["HIBP"],
+            "uncertain_sources": [],
+        }
+    }
+
+    output_path = save_json_report(
+        entity_type=EntityType.EMAIL,
+        raw_value="user@example.com",
+        normalized_value="user@example.com",
+        evidences=[],
+        analysis=analysis,
+        reports_dir=str(tmp_path),
+    )
+
+    with output_path.open(
+        "r",
+        encoding="utf-8",
+    ) as file:
+        report = json.load(file)
+
+    assert report["analysis"] == analysis
