@@ -126,6 +126,17 @@ class HTTPCollector:
             else:
                 params[param_name] = template
 
+        for param_name, env_name in (
+            platform_config.get(
+                "query_params_from_env",
+                {},
+            ).items()
+        ):
+            value = os.getenv(env_name)
+
+            if value:
+                params[param_name] = value
+
         return params
 
     async def check_platform(

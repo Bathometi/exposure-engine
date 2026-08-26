@@ -308,3 +308,33 @@ async def test_collector_passes_query_params_to_request(
         "q": "author-email:user@example.com",
         "per_page": "100",
     }
+def test_collector_resolves_query_params_from_environment(
+    monkeypatch,
+):
+    collector = HTTPCollector()
+
+    monkeypatch.setenv(
+        "YOUTUBE_API_KEY",
+        "test-youtube-api-key",
+    )
+
+    platform_config = {
+        "query_params": {
+            "part": "snippet",
+            "forHandle": "{value}",
+        },
+        "query_params_from_env": {
+            "key": "YOUTUBE_API_KEY",
+        },
+    }
+
+    params = collector._resolve_query_params(
+        platform_config,
+        "somehandle",
+    )
+
+    assert params == {
+        "part": "snippet",
+        "forHandle": "somehandle",
+        "key": "test-youtube-api-key",
+    }
