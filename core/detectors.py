@@ -1189,3 +1189,88 @@ class OpenPGPDetector(BaseDetector):
             ConfidenceLevel.LOW,
             {},
         )
+
+
+class YouTubeDetector(BaseDetector):
+    @staticmethod
+    def detect(
+        status_code: int,
+        response_data: Any,
+    ) -> Tuple[
+        StatusEnum,
+        ConfidenceLevel,
+        Dict[str, Any],
+    ]:
+        if status_code == 429:
+            return (
+                StatusEnum.RATE_LIMITED,
+                ConfidenceLevel.MEDIUM,
+                {},
+            )
+
+        if status_code != 200:
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                {},
+            )
+
+        if not isinstance(response_data, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                {},
+            )
+
+        items = response_data.get("items")
+
+        if not isinstance(items, list):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                {},
+            )
+
+        if not items:
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                {
+                    "channel_found": False,
+                },
+            )
+
+        channel = items[0]
+
+        if not isinstance(channel, dict):
+            return (
+                StatusEnum.UNKNOWN,
+                ConfidenceLevel.LOW,
+                {},
+            )
+
+        snippet = channel.get("snippet", {})
+        statistics = channel.get("statistics", {})
+
+        if not isinstance(snippet, dict):
+            snippet = {}
+
+        if not isinstance(statistics, dict):
+            statistics = {}
+
+        return (
+            StatusEnum.FOUND,
+            ConfidenceLevel.HIGH,
+            {
+                "channel_id": channel.get("id"),
+                "title": snippet.get("title"),
+                "description": snippet.get("description"),
+                "custom_url": snippet.get("customUrl"),
+                "published_at": snippet.get("publishedAt"),
+                "view_count": statistics.get("viewCount"),
+                "subscriber_count": statistics.get(
+                    "subscriberCount"
+                ),
+                "video_count": statistics.get("videoCount"),
+            },
+        )

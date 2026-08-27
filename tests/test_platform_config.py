@@ -7,9 +7,23 @@ def test_all_platforms_have_url_template():
             f"{platform_name} has no url_template"
         )
 
-        assert "{username}" in config["url_template"], (
-            f"{platform_name} url_template has no "
-            f"{{username}} placeholder"
+        has_placeholder = (
+            "{username}" in config["url_template"]
+            or any(
+                isinstance(value, str)
+                and (
+                    "{username}" in value
+                    or "{value}" in value
+                )
+                for value in config.get(
+                    "query_params",
+                    {},
+                ).values()
+            )
+        )
+
+        assert has_placeholder, (
+            f"{platform_name} has no request-value placeholder"
         )
 
 
@@ -24,6 +38,7 @@ def test_all_platforms_have_supported_detector():
         "lichess",
         "huggingface",
         "chesscom",
+        "youtube",
     }
 
     for platform_name, config in PLATFORMS.items():
@@ -135,3 +150,17 @@ def test_chesscom_has_username_placeholder():
         "{username}"
         in PLATFORMS["ChessCom"]["url_template"]
     )
+def test_youtube_source_is_configured():
+    config = PLATFORMS["YouTube"]
+
+    assert config["url_template"] == (
+        "https://www.googleapis.com/youtube/v3/channels"
+    )
+    assert config["detector"] == "youtube"
+    assert config["query_params"] == {
+        "part": "snippet,statistics",
+        "forHandle": "{value}",
+    }
+    assert config["query_params_from_env"] == {
+        "key": "YOUTUBE_API_KEY",
+    }

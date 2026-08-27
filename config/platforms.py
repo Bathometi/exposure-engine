@@ -86,6 +86,19 @@ PLATFORMS = {
         ),
         "detector": "chesscom",
     },
+    "YouTube": {
+        "url_template": (
+            "https://www.googleapis.com/youtube/v3/channels"
+        ),
+        "query_params": {
+            "part": "snippet,statistics",
+            "forHandle": "{value}",
+        },
+        "query_params_from_env": {
+            "key": "YOUTUBE_API_KEY",
+        },
+        "detector": "youtube",
+    },
 }
 
 EMAIL_PLATFORMS = {

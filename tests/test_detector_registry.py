@@ -18,6 +18,7 @@ from core.detectors import (
     LichessDetector,
     StatusCodeDetector,
     TelegramDetector,
+    YouTubeDetector,
 )
 
 
@@ -209,3 +210,13 @@ def test_openpgp_email_source_is_configured():
         "https://keys.openpgp.org/vks/v1/by-email/{value}"
     )
     assert config["detector"] == "openpgp"
+def test_youtube_is_registered_correctly():
+    assert (
+        DETECTOR_REGISTRY["youtube"]["detector"]
+        is YouTubeDetector
+    )
+
+    assert (
+        DETECTOR_REGISTRY["youtube"]["response_type"]
+        == "json"
+    )

@@ -11,6 +11,7 @@ from core.detectors import (
     HuggingFaceDetector,
     StatusCodeDetector,
     TelegramDetector,
+    YouTubeDetector,
 )
 from core.schema import StatusEnum, ConfidenceLevel
 
@@ -730,6 +731,67 @@ def test_openpgp_404_is_not_found():
 
 def test_openpgp_429_is_rate_limited():
     status, confidence, details = OpenPGPDetector.detect(
+        429,
+        None,
+    )
+
+    assert status == StatusEnum.RATE_LIMITED
+    assert confidence == ConfidenceLevel.MEDIUM
+    assert details == {}
+def test_youtube_200_with_channel_is_found():
+    response_data = {
+        "items": [
+            {
+                "id": "UC123456",
+                "snippet": {
+                    "title": "Example Channel",
+                    "description": "Public channel description",
+                    "customUrl": "@somehandle",
+                    "publishedAt": "2020-01-02T03:04:05Z",
+                },
+                "statistics": {
+                    "viewCount": "1234",
+                    "subscriberCount": "56",
+                    "videoCount": "7",
+                },
+            }
+        ]
+    }
+
+    status, confidence, details = YouTubeDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {
+        "channel_id": "UC123456",
+        "title": "Example Channel",
+        "description": "Public channel description",
+        "custom_url": "@somehandle",
+        "published_at": "2020-01-02T03:04:05Z",
+        "view_count": "1234",
+        "subscriber_count": "56",
+        "video_count": "7",
+    }
+def test_youtube_200_without_channel_is_not_found():
+    response_data = {
+        "items": []
+    }
+
+    status, confidence, details = YouTubeDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.NOT_FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {
+        "channel_found": False,
+    }
+def test_youtube_429_is_rate_limited():
+    status, confidence, details = YouTubeDetector.detect(
         429,
         None,
     )

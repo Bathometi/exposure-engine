@@ -298,6 +298,51 @@ async def scan_username(
                 ),
             )
 
+            add_detail_row(
+                table,
+                "Channel ID",
+                details.get("channel_id"),
+            )
+
+            add_detail_row(
+                table,
+                "Title",
+                details.get("title"),
+            )
+
+            add_detail_row(
+                table,
+                "Handle",
+                details.get("custom_url"),
+            )
+
+            published_at = details.get("published_at")
+
+            if published_at:
+                add_detail_row(
+                    table,
+                    "Published At",
+                    format_datetime(published_at),
+                )
+
+            add_detail_row(
+                table,
+                "Subscribers",
+                details.get("subscriber_count"),
+            )
+
+            add_detail_row(
+                table,
+                "Videos",
+                details.get("video_count"),
+            )
+
+            add_detail_row(
+                table,
+                "Views",
+                details.get("view_count"),
+            )
+
         add_detail_row(
             table,
             "Note",

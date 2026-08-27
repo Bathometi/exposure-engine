@@ -12,6 +12,7 @@ from core.detectors import (
     LichessDetector,
     StatusCodeDetector,
     TelegramDetector,
+    YouTubeDetector,
 )
 
 
@@ -77,5 +78,10 @@ DETECTOR_REGISTRY = {
     "openpgp": {
         "detector": OpenPGPDetector,
         "response_type": "text",
+    },
+
+    "youtube": {
+        "detector": YouTubeDetector,
+        "response_type": "json",
     },
 }
