@@ -21,6 +21,11 @@ class UsernameValidator:
         if not cleaned:
             return False, "Username cannot be empty."
 
+        try:
+            cleaned.encode("utf-8")
+        except UnicodeEncodeError:
+            return False, "Username contains invalid Unicode characters."
+
         if any(char.isspace() for char in cleaned):
             return False, "Username cannot contain whitespace."
 

@@ -36,6 +36,10 @@ def test_valid_usernames_are_accepted(username):
             "Username cannot contain whitespace.",
         ),
         (
+            "\udcd1WenMaly",
+            "Username contains invalid Unicode characters.",
+        ),
+        (
             "a" * 129,
             "Username is too long.",
         ),

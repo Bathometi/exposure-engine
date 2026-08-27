@@ -8,6 +8,7 @@ import check_username
     [
         "",
         "john doe",
+        "\udcd1WenMaly",
         "a" * 129,
     ],
 )

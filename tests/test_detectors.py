@@ -799,3 +799,22 @@ def test_youtube_429_is_rate_limited():
     assert status == StatusEnum.RATE_LIMITED
     assert confidence == ConfidenceLevel.MEDIUM
     assert details == {}
+def test_youtube_200_zero_total_results_is_not_found():
+    response_data = {
+        "kind": "youtube#channelListResponse",
+        "pageInfo": {
+            "totalResults": 0,
+            "resultsPerPage": 0,
+        },
+    }
+
+    status, confidence, details = YouTubeDetector.detect(
+        200,
+        response_data,
+    )
+
+    assert status == StatusEnum.NOT_FOUND
+    assert confidence == ConfidenceLevel.HIGH
+    assert details == {
+        "channel_found": False,
+    }

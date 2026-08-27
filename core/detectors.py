@@ -1222,6 +1222,20 @@ class YouTubeDetector(BaseDetector):
                 {},
             )
 
+        page_info = response_data.get("pageInfo")
+
+        if (
+            isinstance(page_info, dict)
+            and page_info.get("totalResults") == 0
+        ):
+            return (
+                StatusEnum.NOT_FOUND,
+                ConfidenceLevel.HIGH,
+                {
+                    "channel_found": False,
+                },
+            )
+
         items = response_data.get("items")
 
         if not isinstance(items, list):
