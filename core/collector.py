@@ -1,6 +1,7 @@
 import asyncio
 import os
 from contextlib import asynccontextmanager
+from dataclasses import dataclass
 from typing import Any, Dict
 
 import aiohttp
@@ -13,6 +14,13 @@ from core.schema import (
     Evidence,
     StatusEnum,
 )
+
+
+@dataclass
+class HTTPResult:
+    status_code: int | None
+    response_data: Any = None
+    error: str | None = None
 
 
 class HTTPCollector:
@@ -138,6 +146,77 @@ class HTTPCollector:
                 params[param_name] = value
 
         return params
+
+    async def request(
+        self,
+        url: str,
+        response_type: str = "json",
+        headers: Dict[str, str] | None = None,
+        params: Dict[str, Any] | None = None,
+    ) -> HTTPResult:
+        retryable_statuses = (
+            429,
+            500,
+            502,
+            503,
+            504,
+        )
+
+        for attempt in range(self.max_retries + 1):
+            try:
+                async with self._session_scope() as session:
+                    async with session.get(
+                        url,
+                        headers=headers,
+                        params=params,
+                        allow_redirects=True,
+                    ) as response:
+                        status_code = response.status
+
+                        if (
+                            status_code in retryable_statuses
+                            and attempt < self.max_retries
+                        ):
+                            delay = 2 ** (attempt + 1)
+                            await asyncio.sleep(delay)
+                            continue
+
+                        if response_type == "text":
+                            response_data = await response.text()
+                        elif response_type == "json":
+                            try:
+                                response_data = await response.json()
+                            except Exception:
+                                response_data = None
+                        else:
+                            return HTTPResult(
+                                status_code=status_code,
+                                error=(
+                                    "Unsupported response type: "
+                                    f"{response_type}"
+                                ),
+                            )
+
+                        return HTTPResult(
+                            status_code=status_code,
+                            response_data=response_data,
+                        )
+
+            except asyncio.TimeoutError:
+                if attempt < self.max_retries:
+                    delay = 2 ** (attempt + 1)
+                    await asyncio.sleep(delay)
+                    continue
+
+                return HTTPResult(
+                    status_code=None,
+                    error="Request timed out.",
+                )
+            except aiohttp.ClientError as exc:
+                return HTTPResult(
+                    status_code=None,
+                    error=type(exc).__name__,
+                )
 
     async def check_platform(
         self,
