@@ -377,3 +377,48 @@ async def test_username_cli_shows_display_name_detail(
     assert result is True
     assert "Display Name" in rendered
     assert "Test User" in rendered
+
+
+def test_username_cli_accepts_command_line_argument(
+    monkeypatch,
+):
+    import builtins
+
+    received = []
+
+    async def fake_scan_username(value):
+        received.append(value)
+        return True
+
+    monkeypatch.setattr(
+        check_username,
+        "scan_username",
+        fake_scan_username,
+    )
+
+    monkeypatch.setattr(
+        check_username.sys,
+        "argv",
+        [
+            "check_username.py",
+            "test_username",
+        ],
+    )
+
+    monkeypatch.setattr(
+        builtins,
+        "input",
+        lambda *args, **kwargs: (
+            (_ for _ in ()).throw(
+                AssertionError(
+                    "input() should not be called"
+                )
+            )
+        ),
+    )
+
+    check_username.main()
+
+    assert received == [
+        "test_username"
+    ]

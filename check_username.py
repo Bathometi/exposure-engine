@@ -472,8 +472,12 @@ async def scan_username(
 
 def main():
     try:
-        raw_username = input(
-            "Введи username для пошуку: "
+        raw_username = (
+            sys.argv[1]
+            if len(sys.argv) > 1
+            else input(
+                "Введи username для пошуку: "
+            )
         )
 
         scan_completed = asyncio.run(
