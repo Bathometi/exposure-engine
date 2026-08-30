@@ -44,7 +44,7 @@ The project is being developed as a practical Python, OSINT, and cybersecurity l
 
 ## 🛠️ Supported Username Platforms
 
-Exposure Engine currently supports **12 public username sources**.
+Exposure Engine currently supports **13 public username sources**.
 
 | Platform | Detection Strategy | Example Evidence |
 | :--- | :--- | :--- |
@@ -60,6 +60,7 @@ Exposure Engine currently supports **12 public username sources**.
 | **Lichess** | Public API | Username existence |
 | **Hugging Face** | Public API + user markers | Username, name, creation date, profile information |
 | **Chess.com** | Public API + player markers | Username, name, title, creation date, profile metadata |
+| **YouTube** | Official YouTube Data API / exact handle lookup + discovery | Channel ID, title, handle, creation date, public statistics |
 
 Platform behavior can change over time.
 
@@ -69,13 +70,14 @@ When a source does not provide enough evidence for a reliable conclusion, Exposu
 
 ## ✉️ Supported Email Sources
 
-Exposure Engine currently supports **3 public email sources** plus domain-level DNS enrichment.
+Exposure Engine currently supports **4 public email sources** plus domain-level DNS enrichment.
 
 | Source | Detection Strategy | Example Evidence |
 | :--- | :--- | :--- |
 | **Gravatar** | Public profile API using normalized email hash | Public profile, name, avatar, location, profile metadata |
 | **HIBP** | Authorized Have I Been Pwned API lookup | Publicly reported breach names and breach count |
 | **GitHub Commits** | Public GitHub Commit Search using exact `author-email:<email>` query | Commit count, linked GitHub users, repositories |
+| **OpenPGP** | Public exact-email lookup via keys.openpgp.org | Published public OpenPGP key record for the queried email |
 
 ### DNS Intelligence
 
@@ -299,6 +301,8 @@ Repositories
 
 Only metadata actually available from the source is displayed.
 
+For YouTube, when an exact handle lookup returns no result, the CLI may display a separate `POSSIBLE MATCHES` panel with public channel candidates discovered through the YouTube Search API. Discovery candidates are kept separate from evidence results and are not treated as confirmed identity matches.
+
 Email scans also display a separate `DNS Intelligence` panel with MX, SPF, and DMARC information. These records describe the email domain and should not be interpreted as evidence that a specific mailbox exists.
 
 At the end of a completed scan, the CLI generates a summary for:
@@ -345,13 +349,13 @@ Example structure:
     "raw_value": "example",
     "normalized_value": "example",
     "scanned_at_utc": "2026-08-17T12:00:00+00:00",
-    "results_count": 12
+    "results_count": 13
   },
   "results": []
 }
 ```
 
-Email reports may also include an `enrichments` object. DNS intelligence is stored under `enrichments.dns`, while GitHub Commit Footprint data is preserved inside the relevant `results[].details` object.
+Email reports may also include `enrichments` and `analysis` objects. DNS intelligence is stored under `enrichments.dns`, while the email exposure summary is stored under `analysis.email_exposure_summary`. Source-specific evidence such as GitHub Commit Footprint data remains inside the relevant `results[].details` object.
 
 Generated reports are excluded from Git through `.gitignore`.
 
@@ -370,7 +374,7 @@ python -m pytest -q
 Current local suite:
 
 ```text
-164 passed
+193 passed
 1 integration test deselected
 ```
 
@@ -678,18 +682,18 @@ Results should be interpreted as **source-specific evidence**, not automatic ide
 
 ## 🎯 Roadmap
 
-The **USERNAME v1** engine is stable. Current development is focused on expanding and stabilizing **EMAIL** exposure analysis.
+The core **USERNAME** and **EMAIL** workflows are stable. Current development is moving toward a broader **Professional Footprint** layer built from lawful public professional sources.
 
 ```text
-USERNAME v1 stable
+USERNAME + EMAIL foundations
         ↓
-EMAIL analysis
+Professional Footprint
         ↓
-additional validated email exposure signals
+Work.ua / Djinni / Robota.ua research
         ↓
-PHONE entity support
+validated public professional signals
         ↓
-additional lawful public exposure signals
+additional lawful exposure modules
 ```
 
 The goal is not to maximize the number of supported websites.
@@ -715,26 +719,30 @@ The project is not intended for unauthorized access, bypassing technical restric
 
 ## 📌 Current Status
 
-**Work in progress — EMAIL exposure analysis and framework expansion.**
+**Work in progress — Professional Footprint research and framework expansion.**
 
 Current state:
 
 ```text
-12 stable username sources
-3 email sources
+13 username sources
+4 email sources
+YouTube exact handle lookup + discovery candidates
 DNS intelligence: MX / SPF / DMARC
 Email normalization + pre-flight validation
 GitHub Commit Footprint
 Gravatar public profile lookup
 HIBP API integration
+OpenPGP public key lookup
+Email Exposure Summary
 Batch email scanning
 Shared aiohttp ClientSession
+Reusable HTTP request layer
 Detector Registry
 Source-specific detectors
-Query-parameter support
+Query-parameter + environment parameter support
 Retry + exponential backoff
 Rich CLI
 Structured JSON reporting
-164 local tests passing
+193 local tests passing
 1 integration test deselected by default
 ```
