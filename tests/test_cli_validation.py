@@ -157,3 +157,124 @@ async def test_username_cli_shows_youtube_channel_details(
     assert "7" in rendered
     assert "Views" in rendered
     assert "1234" in rendered
+@pytest.mark.asyncio
+async def test_username_cli_shows_youtube_discovery_candidates(
+    monkeypatch,
+):
+    from io import StringIO
+
+    from rich.console import Console
+
+    from core.schema import (
+        ConfidenceLevel,
+        EntityType,
+        Evidence,
+        StatusEnum,
+    )
+
+    class FakeCollector:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(
+            self,
+            exc_type,
+            exc,
+            traceback,
+        ):
+            return False
+
+        async def check_platform(
+            self,
+            source_name,
+            **kwargs,
+        ):
+            return Evidence(
+                entity_type=EntityType.USERNAME,
+                raw_value="TEST_USERNAME",
+                normalized_value="test_username",
+                source_name=source_name,
+                status=StatusEnum.NOT_FOUND,
+                confidence=ConfidenceLevel.HIGH,
+                details={
+                    "http_status": 200,
+                    "target_url": (
+                        "https://www.googleapis.com/"
+                        "youtube/v3/channels"
+                    ),
+                },
+                limitations=(
+                    "Status determined via youtube detector."
+                ),
+            )
+
+    async def fake_discovery(collector, query):
+        assert query == "test_username"
+        return [
+            {
+                "channel_id": "UC_TEST_001",
+                "title": "Candidate One",
+                "description": "",
+            }
+        ]
+
+    output = StringIO()
+    saved = {}
+
+    monkeypatch.setattr(
+        check_username,
+        "console",
+        Console(
+            file=output,
+            force_terminal=False,
+            width=200,
+        ),
+    )
+    monkeypatch.setattr(
+        check_username,
+        "HTTPCollector",
+        FakeCollector,
+    )
+    monkeypatch.setattr(
+        check_username,
+        "PLATFORMS",
+        {
+            "YouTube": {
+                "url_template": (
+                    "https://www.googleapis.com/"
+                    "youtube/v3/channels"
+                ),
+                "detector": "youtube",
+            },
+        },
+    )
+    monkeypatch.setattr(
+        check_username,
+        "discover_youtube_channels",
+        fake_discovery,
+        raising=False,
+    )
+
+    def fake_save_json_report(**kwargs):
+        saved.update(kwargs)
+        return "report.json"
+
+    monkeypatch.setattr(
+        check_username,
+        "save_json_report",
+        fake_save_json_report,
+    )
+
+    result = await check_username.scan_username(
+        "TEST_USERNAME"
+    )
+
+    rendered = output.getvalue()
+
+    assert result is True
+    assert "POSSIBLE MATCHES" in rendered
+    assert "Candidate One" in rendered
+    assert "UC_TEST_001" in rendered
+
+    assert len(saved["evidences"]) == 1
+    assert saved["evidences"][0].status == StatusEnum.NOT_FOUND

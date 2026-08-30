@@ -13,6 +13,7 @@ from core.normalizer import Normalizer
 from core.reporting import save_json_report
 from core.schema import EntityType, StatusEnum
 from core.validators import UsernameValidator
+from core.youtube_discovery import discover_youtube_channels
 
 
 console = Console()
@@ -112,6 +113,8 @@ async def scan_username(
         )
     )
 
+    youtube_candidates = []
+
     # Одна shared ClientSession
     # для всього scan.
     async with HTTPCollector() as collector:
@@ -138,6 +141,21 @@ async def scan_username(
             *tasks,
             return_exceptions=True,
         )
+
+        source_names = list(PLATFORMS.keys())
+
+        if "YouTube" in source_names:
+            youtube_index = source_names.index("YouTube")
+            youtube_result = results[youtube_index]
+
+            if (
+                not isinstance(youtube_result, Exception)
+                and youtube_result.status == StatusEnum.NOT_FOUND
+            ):
+                youtube_candidates = await discover_youtube_channels(
+                    collector,
+                    normalized_username,
+                )
 
     # Тут shared ClientSession вже закрита.
     evidence_results = []
@@ -354,6 +372,41 @@ async def scan_username(
                 table,
                 title=source_name,
                 border_style=style,
+            )
+        )
+
+    if youtube_candidates:
+        discovery_table = Table(
+            box=box.SIMPLE,
+            show_header=True,
+        )
+
+        discovery_table.add_column(
+            "#",
+            justify="right",
+        )
+        discovery_table.add_column("Title")
+        discovery_table.add_column("Channel ID")
+
+        for index, candidate in enumerate(
+            youtube_candidates,
+            start=1,
+        ):
+            discovery_table.add_row(
+                str(index),
+                candidate.get("title") or "-",
+                candidate.get("channel_id") or "-",
+            )
+
+        console.print(
+            Panel(
+                discovery_table,
+                title="POSSIBLE MATCHES",
+                border_style="yellow",
+                subtitle=(
+                    "Discovery candidates only - "
+                    "not confirmed identity matches."
+                ),
             )
         )
 
