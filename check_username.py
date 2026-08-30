@@ -255,6 +255,14 @@ async def scan_username(
                 ),
             )
 
+            add_detail_row(
+                table,
+                "Display Name",
+                details.get(
+                    "display_name"
+                ),
+            )
+
             created_at = details.get(
                 "created_at"
             )

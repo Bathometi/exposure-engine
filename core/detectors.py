@@ -1,3 +1,6 @@
+import html
+import re
+
 from datetime import datetime, timezone
 from typing import Any, Dict, Tuple
 
@@ -277,6 +280,34 @@ class DevToDetector(BaseDetector):
         )
 
 
+def _extract_telegram_display_name(
+    html_text: str,
+) -> str | None:
+    match = re.search(
+        (
+            r'<div[^>]*class=["\'][^"\']*'
+            r'tgme_page_title[^"\']*["\'][^>]*>'
+            r'(.*?)</div>'
+        ),
+        html_text,
+        flags=re.IGNORECASE | re.DOTALL,
+    )
+
+    if match is None:
+        return None
+
+    value = re.sub(
+        r"<[^>]+>",
+        "",
+        match.group(1),
+    )
+
+    value = html.unescape(value)
+    value = re.sub(r"\s+", " ", value).strip()
+
+    return value or None
+
+
 class TelegramDetector(BaseDetector):
     """
     Детектор для публічних Telegram-сторінок t.me/username.
@@ -344,6 +375,18 @@ class TelegramDetector(BaseDetector):
                 if has_title
                 else "tgme_page_extra"
             )
+
+            if has_title:
+                display_name = (
+                    _extract_telegram_display_name(
+                        html_text
+                    )
+                )
+
+                if display_name:
+                    details["display_name"] = (
+                        display_name
+                    )
 
             return (
                 StatusEnum.FOUND,

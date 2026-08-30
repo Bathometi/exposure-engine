@@ -144,7 +144,11 @@ def test_devto_404_is_not_found():
 
 
 def test_telegram_marker_is_found():
-    html = '<div class="tgme_page_title">Test User</div>'
+    html = (
+        '<div class="tgme_page_title">'
+        '<span dir="auto">Test User</span>'
+        '</div>'
+    )
 
     status, confidence, details = TelegramDetector.detect(
         200,
@@ -153,6 +157,8 @@ def test_telegram_marker_is_found():
 
     assert status == StatusEnum.FOUND
     assert confidence == ConfidenceLevel.HIGH
+    assert details["profile_marker"] == "tgme_page_title"
+    assert details["display_name"] == "Test User"
 
 
 def test_telegram_without_marker_is_unknown():

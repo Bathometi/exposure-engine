@@ -278,3 +278,102 @@ async def test_username_cli_shows_youtube_discovery_candidates(
 
     assert len(saved["evidences"]) == 1
     assert saved["evidences"][0].status == StatusEnum.NOT_FOUND
+
+
+@pytest.mark.asyncio
+async def test_username_cli_shows_display_name_detail(
+    monkeypatch,
+):
+    from io import StringIO
+
+    from rich.console import Console
+
+    from core.schema import (
+        ConfidenceLevel,
+        EntityType,
+        Evidence,
+        StatusEnum,
+    )
+
+    class FakeCollector:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(
+            self,
+            exc_type,
+            exc,
+            traceback,
+        ):
+            return False
+
+        async def check_platform(
+            self,
+            source_name,
+            **kwargs,
+        ):
+            return Evidence(
+                entity_type=EntityType.USERNAME,
+                raw_value="test_username",
+                normalized_value="test_username",
+                source_name=source_name,
+                status=StatusEnum.FOUND,
+                confidence=ConfidenceLevel.HIGH,
+                details={
+                    "http_status": 200,
+                    "target_url": (
+                        "https://t.me/test_username"
+                    ),
+                    "display_name": "Test User",
+                },
+                limitations=(
+                    "Status determined via telegram detector."
+                ),
+            )
+
+    output = StringIO()
+
+    monkeypatch.setattr(
+        check_username,
+        "console",
+        Console(
+            file=output,
+            force_terminal=False,
+            width=200,
+        ),
+    )
+
+    monkeypatch.setattr(
+        check_username,
+        "HTTPCollector",
+        FakeCollector,
+    )
+
+    monkeypatch.setattr(
+        check_username,
+        "PLATFORMS",
+        {
+            "Telegram": {
+                "url_template": (
+                    "https://t.me/{username}"
+                ),
+                "detector": "telegram",
+            },
+        },
+    )
+
+    monkeypatch.setattr(
+        check_username,
+        "save_json_report",
+        lambda **kwargs: "report.json",
+    )
+
+    result = await check_username.scan_username(
+        "test_username"
+    )
+
+    rendered = output.getvalue()
+
+    assert result is True
+    assert "Display Name" in rendered
+    assert "Test User" in rendered
