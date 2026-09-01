@@ -3,8 +3,10 @@ import sys
 
 from check_email import scan_email
 from check_username import scan_username
+from core.phone_intelligence import collect_phone_intelligence
 from core.validators import (
     EmailValidator,
+    PhoneValidator,
     UsernameValidator,
 )
 
@@ -18,6 +20,13 @@ def detect_target_type(value: str) -> str | None:
 
     if email_valid:
         return "email"
+
+    phone_valid, _ = PhoneValidator.validate(
+        cleaned
+    )
+
+    if phone_valid:
+        return "phone"
 
     username_valid, _ = UsernameValidator.validate(
         cleaned
@@ -47,6 +56,41 @@ def main():
         completed = asyncio.run(
             scan_username(target)
         )
+    elif target_type == "phone":
+        intelligence = collect_phone_intelligence(
+            target
+        )
+
+        print("\nPHONE INTELLIGENCE")
+        print(
+            f"Possible: {intelligence['possible']}"
+        )
+        print(
+            f"Valid: {intelligence['valid']}"
+        )
+        print(
+            f"Region: {intelligence['region'] or 'n/a'}"
+        )
+        print(
+            f"Location: {intelligence['location'] or 'n/a'}"
+        )
+        print(
+            f"Carrier: {intelligence['carrier'] or 'n/a'}"
+        )
+        print(
+            f"Type: {intelligence['type']}"
+        )
+        print(
+            "Timezone: "
+            + (
+                ", ".join(
+                    intelligence["timezones"]
+                )
+                or "n/a"
+            )
+        )
+
+        completed = True
     else:
         print(
             "Could not determine target type."

@@ -102,3 +102,21 @@ def test_launcher_dispatches_email(monkeypatch):
     exposure.main()
 
     assert received == ["test@example.com"]
+
+
+def test_detects_phone_target():
+    assert (
+        exposure.detect_target_type(
+            "+380501234567"
+        )
+        == "phone"
+    )
+
+
+def test_detects_formatted_phone_target():
+    assert (
+        exposure.detect_target_type(
+            "+380 (50) 123-45-67"
+        )
+        == "phone"
+    )

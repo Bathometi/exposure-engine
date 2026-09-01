@@ -35,6 +35,60 @@ class UsernameValidator:
         return True, None
 
 
+class PhoneValidator:
+    """
+    Performs basic sanity validation for phone numbers.
+
+    This validator accepts common separators but does not
+    attempt country-specific number validation.
+    """
+
+    MIN_DIGITS = 7
+    MAX_DIGITS = 15
+    ALLOWED_SEPARATORS = {" ", "-", "(", ")"}
+
+    @classmethod
+    def validate(
+        cls,
+        phone: str,
+    ) -> Tuple[bool, Optional[str]]:
+        cleaned = phone.strip()
+
+        if not cleaned:
+            return False, "Phone number cannot be empty."
+
+        try:
+            cleaned.encode("utf-8")
+        except UnicodeEncodeError:
+            return False, "Phone number contains invalid Unicode characters."
+
+        for index, char in enumerate(cleaned):
+            if char.isdigit():
+                continue
+
+            if char == "+" and index == 0:
+                continue
+
+            if char in cls.ALLOWED_SEPARATORS:
+                continue
+
+            return False, "Phone number contains invalid characters."
+
+        digits = "".join(
+            char
+            for char in cleaned
+            if char.isdigit()
+        )
+
+        if len(digits) < cls.MIN_DIGITS:
+            return False, "Phone number is too short."
+
+        if len(digits) > cls.MAX_DIGITS:
+            return False, "Phone number is too long."
+
+        return True, None
+
+
 class EmailValidator:
     """
     Performs basic sanity validation for email addresses.
