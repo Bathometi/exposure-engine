@@ -102,26 +102,53 @@ def extract_github_match_context(
     if not query:
         return None
 
-    position = text.lower().find(
-        query.lower()
-    )
+    lower_text = text.lower()
+    lower_query = query.lower()
+    search_from = 0
 
-    if position == -1:
-        return None
+    while True:
+        position = lower_text.find(
+            lower_query,
+            search_from,
+        )
 
-    start = max(
-        0,
-        position - radius,
-    )
-    end = min(
-        len(text),
-        position + len(query) + radius,
-    )
+        if position == -1:
+            return None
 
-    return {
-        "exact_match": True,
-        "context": text[start:end],
-    }
+        if query.isdigit():
+            before = (
+                text[position - 1]
+                if position > 0
+                else ""
+            )
+
+            after_position = (
+                position + len(query)
+            )
+
+            after = (
+                text[after_position]
+                if after_position < len(text)
+                else ""
+            )
+
+            if before.isdigit() or after.isdigit():
+                search_from = position + 1
+                continue
+
+        start = max(
+            0,
+            position - radius,
+        )
+        end = min(
+            len(text),
+            position + len(query) + radius,
+        )
+
+        return {
+            "exact_match": True,
+            "context": text[start:end],
+        }
 
 
 async def fetch_github_file_text(
@@ -262,7 +289,8 @@ async def verify_github_mention(
             "matched_variants": verified_variants,
             "context": verified_context,
             "classification": classify_phone_context(
-                verified_context
+                verified_context,
+                path=mention.get("path"),
             ),
         }
 
@@ -273,11 +301,35 @@ async def verify_github_mention(
     }
 
 
-def classify_phone_context(context: str) -> str:
+def classify_phone_context(
+    context: str,
+    path: str | None = None,
+) -> str:
     import re
 
     if not isinstance(context, str):
         return "uncertain"
+
+    if isinstance(path, str):
+        normalized_path = path.lower()
+
+        test_path_patterns = (
+            r"(?:^|/)(?:test|tests|spec|e2e)(?:/|$)",
+            r"(?:^|/)[^/]+(?:_test|_spec|\.spec)\.[^/]+$",
+        )
+
+        if any(
+            re.search(pattern, normalized_path)
+            for pattern in test_path_patterns
+        ):
+            return "example_or_test_data"
+
+    if re.search(
+        r"\bexample\b[\"']?\s*[:=]",
+        context,
+        re.IGNORECASE,
+    ):
+        return "example_or_test_data"
 
     if re.search(
         r"\b(?:phone|tel|telephone|mobile|whatsapp)\b",
@@ -326,6 +378,7 @@ def summarize_github_verifications(
         "candidate_count": len(results),
         "verified_string_occurrences": 0,
         "phone_context": 0,
+        "example_or_test_data": 0,
         "numeric_noise": 0,
         "uncertain": 0,
         "not_verified": 0,
@@ -345,6 +398,7 @@ def summarize_github_verifications(
 
             if classification in {
                 "phone_context",
+                "example_or_test_data",
                 "numeric_noise",
                 "uncertain",
             }:

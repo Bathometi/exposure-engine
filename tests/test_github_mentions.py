@@ -611,8 +611,150 @@ def test_summarizes_github_verifications():
         "candidate_count": 5,
         "verified_string_occurrences": 3,
         "phone_context": 1,
+        "example_or_test_data": 0,
         "numeric_noise": 1,
         "uncertain": 1,
         "not_verified": 1,
         "unavailable": 1,
     }
+
+
+def test_classifies_explicit_example_phone_data():
+    from core.github_mentions import classify_phone_context
+
+    context = (
+        'country: "United Kingdom", '
+        'example: "TEST_VARIANT"'
+    )
+
+    assert classify_phone_context(context) == (
+        "example_or_test_data"
+    )
+
+
+def test_classifies_phone_in_spec_file_as_test_data():
+    from core.github_mentions import classify_phone_context
+
+    context = (
+        'otp = service.verify_create('
+        '"TEST_VARIANT", "template")'
+    )
+
+    result = classify_phone_context(
+        context,
+        path="spec/services/message_service_spec.rb",
+    )
+
+    assert result == "example_or_test_data"
+
+
+@pytest.mark.asyncio
+async def test_verify_github_mention_uses_file_path_for_classification():
+    import base64
+
+    from core.github_mentions import verify_github_mention
+
+    text = 'service.verify_create("TEST_VARIANT", "template")'
+
+    encoded = base64.b64encode(
+        text.encode("utf-8")
+    ).decode("ascii")
+
+    class FakeResult:
+        status_code = 200
+        response_data = {
+            "encoding": "base64",
+            "content": encoded,
+        }
+        error = None
+
+    class FakeCollector:
+        async def request(self, **kwargs):
+            return FakeResult()
+
+    mention = {
+        "source": "GitHub",
+        "repository": "example/repo",
+        "path": "spec/services/message_service_spec.rb",
+        "url": (
+            "https://github.com/"
+            "example/repo/blob/main/spec/services/message_service_spec.rb"
+        ),
+        "api_url": (
+            "https://api.github.com/"
+            "repos/example/repo/contents/"
+            "spec/services/message_service_spec.rb"
+        ),
+        "matched_variant": "TEST_VARIANT",
+    }
+
+    verification = await verify_github_mention(
+        FakeCollector(),
+        mention,
+    )
+
+    assert verification["status"] == "verified"
+    assert verification["classification"] == (
+        "example_or_test_data"
+    )
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "e2e/app.spec.js",
+        "tests/phone_test.py",
+        "src/components/phone.spec.js",
+    ],
+)
+def test_classifies_common_test_file_paths(path):
+    from core.github_mentions import classify_phone_context
+
+    result = classify_phone_context(
+        'register_number("TEST_VARIANT")',
+        path=path,
+    )
+
+    assert result == "example_or_test_data"
+
+
+def test_summary_counts_example_or_test_data():
+    from core.github_mentions import summarize_github_verifications
+
+    results = [
+        {
+            "verification": {
+                "status": "verified",
+                "classification": "example_or_test_data",
+            }
+        }
+    ]
+
+    summary = summarize_github_verifications(results)
+
+    assert summary["example_or_test_data"] == 1
+
+
+def test_rejects_phone_digits_embedded_inside_larger_number():
+    import phonenumbers
+
+    from core.github_mentions import extract_github_match_context
+
+    number = phonenumbers.example_number_for_type(
+        "GB",
+        phonenumbers.PhoneNumberType.MOBILE,
+    )
+
+    variant = phonenumbers.format_number(
+        number,
+        phonenumbers.PhoneNumberFormat.E164,
+    ).lstrip("+")
+
+    text = f"999{variant}888,53"
+
+    context = extract_github_match_context(
+        text,
+        variant,
+    )
+
+    assert context is None
