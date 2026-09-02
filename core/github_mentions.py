@@ -261,6 +261,9 @@ async def verify_github_mention(
             "status": "verified",
             "matched_variants": verified_variants,
             "context": verified_context,
+            "classification": classify_phone_context(
+                verified_context
+            ),
         }
 
     return {
@@ -268,3 +271,89 @@ async def verify_github_mention(
         "matched_variants": [],
         "context": None,
     }
+
+
+def classify_phone_context(context: str) -> str:
+    import re
+
+    if not isinstance(context, str):
+        return "uncertain"
+
+    if re.search(
+        r"\b(?:phone|tel|telephone|mobile|whatsapp)\b",
+        context,
+        re.IGNORECASE,
+    ):
+        return "phone_context"
+
+    decimal_values = re.findall(
+        r"(?<!\w)[+-]?\d+\.\d+(?!\w)",
+        context,
+    )
+
+    if len(decimal_values) >= 4:
+        return "numeric_noise"
+
+    return "uncertain"
+
+
+async def verify_github_mentions(
+    collector,
+    mentions: list[dict],
+) -> list[dict]:
+    results = []
+
+    for mention in mentions:
+        verification = await verify_github_mention(
+            collector,
+            mention,
+        )
+
+        verified_mention = {
+            **mention,
+            "verification": verification,
+        }
+
+        results.append(verified_mention)
+
+    return results
+
+
+def summarize_github_verifications(
+    results: list[dict],
+) -> dict:
+    summary = {
+        "candidate_count": len(results),
+        "verified_string_occurrences": 0,
+        "phone_context": 0,
+        "numeric_noise": 0,
+        "uncertain": 0,
+        "not_verified": 0,
+        "unavailable": 0,
+    }
+
+    for result in results:
+        verification = result.get("verification", {})
+
+        status = verification.get("status")
+        classification = verification.get(
+            "classification"
+        )
+
+        if status == "verified":
+            summary["verified_string_occurrences"] += 1
+
+            if classification in {
+                "phone_context",
+                "numeric_noise",
+                "uncertain",
+            }:
+                summary[classification] += 1
+
+        elif status == "not_verified":
+            summary["not_verified"] += 1
+
+        elif status == "unavailable":
+            summary["unavailable"] += 1
+
+    return summary

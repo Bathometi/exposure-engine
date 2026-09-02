@@ -351,6 +351,7 @@ async def test_verify_github_mention_confirms_exact_match():
         "TEST_VARIANT"
     ]
     assert "Phone: TEST_VARIANT" in verification["context"]
+    assert verification["classification"] == "phone_context"
 
 
 @pytest.mark.asyncio
@@ -408,3 +409,210 @@ async def test_verify_github_mention_preserves_all_verified_variants():
         "TEST_VARIANT_A",
         "TEST_VARIANT_B",
     ]
+
+
+def test_classifies_clear_phone_context():
+    from core.github_mentions import classify_phone_context
+
+    result = classify_phone_context(
+        "Contact details:\nPhone: TEST_VARIANT\nEmail: test@example.com"
+    )
+
+    assert result == "phone_context"
+
+
+@pytest.mark.parametrize(
+    "context",
+    [
+        "Tel: TEST_VARIANT",
+        "Telephone: TEST_VARIANT",
+        "Mobile: TEST_VARIANT",
+        "WhatsApp: TEST_VARIANT",
+    ],
+)
+def test_classifies_common_phone_context_markers(context):
+    from core.github_mentions import classify_phone_context
+
+    assert classify_phone_context(context) == "phone_context"
+
+
+def test_classifies_dense_decimal_data_as_numeric_noise():
+    from core.github_mentions import classify_phone_context
+
+    context = (
+        "0.123456, 0.654321, 0.111111, "
+        "0.222222, 0.333333, 0.444444"
+    )
+
+    assert classify_phone_context(context) == "numeric_noise"
+
+
+@pytest.mark.asyncio
+async def test_verify_github_mention_classifies_numeric_noise():
+    import base64
+
+    from core.github_mentions import verify_github_mention
+
+    text = (
+        "0.123456, 0.654321, TEST_VARIANT, "
+        "0.111111, 0.222222, 0.333333"
+    )
+
+    encoded = base64.b64encode(
+        text.encode("utf-8")
+    ).decode("ascii")
+
+    class FakeResult:
+        status_code = 200
+        response_data = {
+            "encoding": "base64",
+            "content": encoded,
+        }
+        error = None
+
+    class FakeCollector:
+        async def request(self, **kwargs):
+            return FakeResult()
+
+    mention = {
+        "source": "GitHub",
+        "repository": "example/repo",
+        "path": "data.txt",
+        "url": (
+            "https://github.com/"
+            "example/repo/blob/main/data.txt"
+        ),
+        "api_url": (
+            "https://api.github.com/"
+            "repos/example/repo/contents/data.txt"
+        ),
+        "matched_variant": "TEST_VARIANT",
+    }
+
+    verification = await verify_github_mention(
+        FakeCollector(),
+        mention,
+    )
+
+    assert verification["status"] == "verified"
+    assert verification["classification"] == "numeric_noise"
+
+
+@pytest.mark.asyncio
+async def test_verify_github_mentions_verifies_all_candidates():
+    import base64
+
+    from core.github_mentions import verify_github_mentions
+
+    contents = {
+        "https://api.github.com/repos/example/repo/contents/contact.txt": (
+            "Phone: TEST_VARIANT"
+        ),
+        "https://api.github.com/repos/example/repo/contents/data.txt": (
+            "0.111111, 0.222222, TEST_VARIANT, "
+            "0.333333, 0.444444"
+        ),
+    }
+
+    class FakeCollector:
+        async def request(self, **kwargs):
+            text = contents[kwargs["url"]]
+
+            class FakeResult:
+                status_code = 200
+                response_data = {
+                    "encoding": "base64",
+                    "content": base64.b64encode(
+                        text.encode("utf-8")
+                    ).decode("ascii"),
+                }
+                error = None
+
+            return FakeResult()
+
+    mentions = [
+        {
+            "source": "GitHub",
+            "repository": "example/repo",
+            "path": "contact.txt",
+            "url": "https://github.com/example/repo/contact.txt",
+            "api_url": (
+                "https://api.github.com/"
+                "repos/example/repo/contents/contact.txt"
+            ),
+            "matched_variant": "TEST_VARIANT",
+        },
+        {
+            "source": "GitHub",
+            "repository": "example/repo",
+            "path": "data.txt",
+            "url": "https://github.com/example/repo/data.txt",
+            "api_url": (
+                "https://api.github.com/"
+                "repos/example/repo/contents/data.txt"
+            ),
+            "matched_variant": "TEST_VARIANT",
+        },
+    ]
+
+    results = await verify_github_mentions(
+        FakeCollector(),
+        mentions,
+    )
+
+    assert len(results) == 2
+    assert results[0]["verification"]["classification"] == (
+        "phone_context"
+    )
+    assert results[1]["verification"]["classification"] == (
+        "numeric_noise"
+    )
+
+
+def test_summarizes_github_verifications():
+    from core.github_mentions import summarize_github_verifications
+
+    results = [
+        {
+            "verification": {
+                "status": "verified",
+                "classification": "phone_context",
+            }
+        },
+        {
+            "verification": {
+                "status": "verified",
+                "classification": "numeric_noise",
+            }
+        },
+        {
+            "verification": {
+                "status": "verified",
+                "classification": "uncertain",
+            }
+        },
+        {
+            "verification": {
+                "status": "not_verified",
+                "classification": None,
+            }
+        },
+        {
+            "verification": {
+                "status": "unavailable",
+                "classification": None,
+            }
+        },
+    ]
+
+    summary = summarize_github_verifications(results)
+
+    assert summary == {
+        "candidate_count": 5,
+        "verified_string_occurrences": 3,
+        "phone_context": 1,
+        "numeric_noise": 1,
+        "uncertain": 1,
+        "not_verified": 1,
+        "unavailable": 1,
+    }
