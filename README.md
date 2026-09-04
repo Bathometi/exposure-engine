@@ -1,6 +1,6 @@
 # 🔍 Exposure Engine
 
-**Exposure Engine** is an asynchronous, evidence-based OSINT framework for analyzing public username and email exposure across multiple sources.
+**Exposure Engine** is an asynchronous, evidence-based OSINT framework for analyzing public username, email, and phone exposure across multiple sources.
 
 The project is built around one core principle:
 
@@ -16,8 +16,10 @@ The project is being developed as a practical Python, OSINT, and cybersecurity l
 
 - Asynchronous scanning with `asyncio` and `aiohttp`
 - Shared HTTP session for concurrent platform checks
-- Username and email normalization before scanning
-- Pre-flight username and email validation before HTTP requests
+- Username, email, and phone normalization before scanning
+- Pre-flight username, email, and phone validation before HTTP requests
+- Local phone-number intelligence using `phonenumbers`
+- GitHub phone-mention discovery with content verification and context classification
 - Email identifier transforms for source-specific lookups
 - Email-domain intelligence via MX, SPF, and DMARC
 - Source-specific detectors
@@ -105,6 +107,38 @@ A linked GitHub account is strong public association evidence, but should not be
 
 HIBP access requires an appropriate API key. A `404` means that the API returned no matching breach records for that query; it does not prove that the address has never appeared in a breach.
 
+
+---
+
+## 📱 Phone Intelligence
+
+Phone scans combine local number metadata with public GitHub mention discovery.
+
+Current phone workflow:
+
+- validation and normalization before network activity;
+- local metadata using `phonenumbers`;
+- region, carrier, number type, and timezone enrichment;
+- generation of multiple phone search variants;
+- GitHub Code Search discovery;
+- deduplication across matching variants;
+- public file-content verification;
+- context classification;
+- structured JSON reporting.
+
+GitHub candidates are classified as:
+
+- `phone_context`
+- `example_or_test_data`
+- `numeric_noise`
+- `uncertain`
+
+A GitHub search hit is not automatically treated as a verified phone mention.
+
+Digit-only matches embedded inside larger numeric values are rejected during content verification.
+
+A `phone_context` result confirms a public phone-like occurrence in context. It does not prove identity, ownership, or attribution.
+
 ---
 
 ## 🚦 Result Statuses
@@ -155,7 +189,7 @@ Status and confidence are stored together inside a standardized `Evidence` objec
 
 ## 🧹 Normalization and Validation
 
-Username and email processing happens before network activity.
+Username, email, and phone processing happens before network activity.
 
 ```text
 Raw input
@@ -235,6 +269,10 @@ python -m pip install -r requirements-dev.txt
 ```
 
 ### 4. Run Exposure Engine
+
+The unified launcher automatically detects supported target types: username, email, and phone.
+
+For phone scans, use international format.
 
 #### Username scan
 
@@ -357,6 +395,8 @@ Example structure:
 
 Email reports may also include `enrichments` and `analysis` objects. DNS intelligence is stored under `enrichments.dns`, while the email exposure summary is stored under `analysis.email_exposure_summary`. Source-specific evidence such as GitHub Commit Footprint data remains inside the relevant `results[].details` object.
 
+Phone reports store local number metadata under `enrichments.phone_intelligence`. GitHub phone-mention discovery, verification results, and the classification summary are stored under `analysis.github_phone_mentions`.
+
 Generated reports are excluded from Git through `.gitignore`.
 
 ---
@@ -374,7 +414,7 @@ python -m pytest -q
 Current local suite:
 
 ```text
-193 passed
+273 passed
 1 integration test deselected
 ```
 
@@ -408,7 +448,7 @@ Current test coverage includes:
 
 Mocks, fake HTTP sessions, and `monkeypatch` are used where appropriate so the default test suite remains deterministic and does not depend on live APIs.
 
-The regression matrix currently covers all **12 configured platforms** with positive and negative scenarios.
+The regression matrix currently covers all **13 configured username platforms** with positive and negative scenarios.
 
 ---
 
@@ -447,7 +487,7 @@ Username
    ↓
 Normalize + Validate
    ↓
-12 Username Sources
+13 Username Sources
    ↓
 Concurrent HTTP Checks
    ↓
@@ -463,7 +503,7 @@ Email
   ↓
 Normalize + Validate
   ↓
-3 Email Sources
+4 Email Sources
   ├── Gravatar
   ├── HIBP
   └── GitHub Commits
@@ -481,6 +521,23 @@ Rich CLI + JSON Report + Summary
 GitHub Commit Footprint uses query parameters such as `author-email:<email>` and is interpreted by its own detector.
 
 DNS enrichment is collected separately from source evidence and stored under `enrichments.dns` in email JSON reports.
+
+### Phone flow
+
+Phone scans combine local enrichment with a separate public-mention analysis pipeline.
+
+- Normalize and validate the phone number
+- Collect local phone intelligence
+- Generate search variants
+- Discover GitHub candidates
+- Deduplicate matching artifacts
+- Fetch public source content
+- Verify exact phone occurrences
+- Classify context
+- Build summary
+- Save structured JSON report
+
+Important: a verified string occurrence or `phone_context` classification does not prove identity or ownership.
 
 ### HTTP lifecycle
 
