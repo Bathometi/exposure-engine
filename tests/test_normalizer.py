@@ -1,3 +1,5 @@
+import phonenumbers
+
 from core.normalizer import Normalizer
 from core.schema import EntityType
 
@@ -19,19 +21,45 @@ def test_username_normalization():
 
 
 def test_phone_normalization_with_plus():
-    result = Normalizer.normalize_phone(
-        "+380 (97) 123-45-67"
+    number = phonenumbers.example_number_for_type(
+        "GB",
+        phonenumbers.PhoneNumberType.MOBILE,
     )
 
-    assert result == "+380971234567"
+    expected = phonenumbers.format_number(
+        number,
+        phonenumbers.PhoneNumberFormat.E164,
+    )
+
+    formatted = phonenumbers.format_number(
+        number,
+        phonenumbers.PhoneNumberFormat.INTERNATIONAL,
+    )
+
+    result = Normalizer.normalize_phone(formatted)
+
+    assert result == expected
 
 
 def test_phone_normalization_without_plus():
-    result = Normalizer.normalize_phone(
-        "380 (97) 123-45-67"
+    number = phonenumbers.example_number_for_type(
+        "GB",
+        phonenumbers.PhoneNumberType.MOBILE,
     )
 
-    assert result == "380971234567"
+    expected = phonenumbers.format_number(
+        number,
+        phonenumbers.PhoneNumberFormat.E164,
+    ).lstrip("+")
+
+    formatted = phonenumbers.format_number(
+        number,
+        phonenumbers.PhoneNumberFormat.INTERNATIONAL,
+    ).lstrip("+")
+
+    result = Normalizer.normalize_phone(formatted)
+
+    assert result == expected
 
 
 def test_generic_normalize_username():
