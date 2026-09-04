@@ -1,3 +1,5 @@
+import phonenumbers
+
 import exposure
 
 
@@ -105,18 +107,79 @@ def test_launcher_dispatches_email(monkeypatch):
 
 
 def test_detects_phone_target():
-    assert (
-        exposure.detect_target_type(
-            "+380501234567"
-        )
-        == "phone"
+    number = phonenumbers.example_number_for_type(
+        "GB",
+        phonenumbers.PhoneNumberType.MOBILE,
     )
+
+    target = phonenumbers.format_number(
+        number,
+        phonenumbers.PhoneNumberFormat.E164,
+    )
+
+    assert exposure.detect_target_type(target) == "phone"
 
 
 def test_detects_formatted_phone_target():
-    assert (
-        exposure.detect_target_type(
-            "+380 (50) 123-45-67"
-        )
-        == "phone"
+    number = phonenumbers.example_number_for_type(
+        "GB",
+        phonenumbers.PhoneNumberType.MOBILE,
     )
+
+    target = phonenumbers.format_number(
+        number,
+        phonenumbers.PhoneNumberFormat.INTERNATIONAL,
+    )
+
+    assert exposure.detect_target_type(target) == "phone"
+
+
+def test_launcher_dispatches_phone(monkeypatch):
+    received = []
+
+    number = phonenumbers.example_number_for_type(
+        "GB",
+        phonenumbers.PhoneNumberType.MOBILE,
+    )
+
+    target = phonenumbers.format_number(
+        number,
+        phonenumbers.PhoneNumberFormat.E164,
+    )
+
+    async def fake_scan_phone(value):
+        received.append(value)
+        return True
+
+    async def fail_scan(value):
+        raise AssertionError(
+            "Wrong scanner was called"
+        )
+
+    monkeypatch.setattr(
+        exposure,
+        "scan_phone",
+        fake_scan_phone,
+    )
+    monkeypatch.setattr(
+        exposure,
+        "scan_username",
+        fail_scan,
+    )
+    monkeypatch.setattr(
+        exposure,
+        "scan_email",
+        fail_scan,
+    )
+    monkeypatch.setattr(
+        exposure.sys,
+        "argv",
+        [
+            "exposure.py",
+            target,
+        ],
+    )
+
+    exposure.main()
+
+    assert received == [target]
