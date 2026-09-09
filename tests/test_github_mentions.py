@@ -121,12 +121,14 @@ async def test_discover_github_mentions_uses_code_search(
             calls.append(kwargs)
             return FakeResult()
 
-    mentions = await discover_github_mentions(
+    result = await discover_github_mentions(
         FakeCollector(),
         "TEST_VARIANT",
     )
 
-    assert mentions == [
+    assert result["status"] == "ok"
+    assert result["error"] is None
+    assert result["mentions"] == [
         {
             "source": "GitHub",
             "repository": "example/repo-one",
@@ -171,12 +173,16 @@ async def test_discover_github_mentions_handles_http_error():
         async def request(self, **kwargs):
             return FakeResult()
 
-    mentions = await discover_github_mentions(
+    result = await discover_github_mentions(
         FakeCollector(),
         "TEST_VARIANT",
     )
 
-    assert mentions == []
+    assert result == {
+        "status": "unavailable",
+        "mentions": [],
+        "error": 'HTTP 403',
+    }
 
 
 @pytest.mark.asyncio
@@ -190,12 +196,16 @@ async def test_discover_github_mentions_handles_request_error():
         async def request(self, **kwargs):
             return FakeResult()
 
-    mentions = await discover_github_mentions(
+    result = await discover_github_mentions(
         FakeCollector(),
         "TEST_VARIANT",
     )
 
-    assert mentions == []
+    assert result == {
+        "status": "unavailable",
+        "mentions": [],
+        "error": 'network error',
+    }
 
 
 

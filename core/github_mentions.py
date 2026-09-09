@@ -52,7 +52,7 @@ GITHUB_CODE_SEARCH_URL = (
 async def discover_github_mentions(
     collector,
     query: str,
-) -> list[dict]:
+) -> dict:
     headers = {
         "Accept": "application/vnd.github+json",
     }
@@ -77,15 +77,27 @@ async def discover_github_mentions(
     )
 
     if result.error is not None:
-        return []
+        return {
+            "status": "unavailable",
+            "mentions": [],
+            "error": str(result.error),
+        }
 
     if result.status_code != 200:
-        return []
+        return {
+            "status": "unavailable",
+            "mentions": [],
+            "error": f"HTTP {result.status_code}",
+        }
 
-    return extract_github_mentions(
-        result.response_data,
-        matched_variant=query,
-    )
+    return {
+        "status": "ok",
+        "mentions": extract_github_mentions(
+            result.response_data,
+            matched_variant=query,
+        ),
+        "error": None,
+    }
 
 
 def extract_github_match_context(

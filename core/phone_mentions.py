@@ -9,21 +9,28 @@ from core.phone_variants import (
 async def discover_phone_github_mentions(
     collector,
     phone: str,
-) -> list[dict]:
+) -> dict:
     variants = generate_phone_variants(
         phone
     )
 
     mentions = []
     mentions_by_key = {}
+    searches = []
 
     for variant in variants:
-        results = await discover_github_mentions(
+        result = await discover_github_mentions(
             collector,
             variant,
         )
 
-        for mention in results:
+        searches.append({
+            "variant": variant,
+            "status": result["status"],
+            "error": result["error"],
+        })
+
+        for mention in result["mentions"]:
             key = (
                 mention.get("source"),
                 mention.get("repository"),
@@ -72,4 +79,23 @@ async def discover_phone_github_mentions(
                 stored_mention
             )
 
-    return mentions
+    statuses = [
+        search["status"]
+        for search in searches
+    ]
+
+    if statuses and all(
+        status == "unavailable"
+        for status in statuses
+    ):
+        status = "unavailable"
+    elif "unavailable" in statuses:
+        status = "partial"
+    else:
+        status = "ok"
+
+    return {
+        "status": status,
+        "mentions": mentions,
+        "searches": searches,
+    }

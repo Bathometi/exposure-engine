@@ -3,6 +3,18 @@ import pytest
 import check_phone
 
 
+def _successful_discovery_mock(fake):
+    async def wrapped(*args, **kwargs):
+        mentions = await fake(*args, **kwargs)
+        return {
+            "status": "ok",
+            "mentions": mentions,
+            "searches": [],
+        }
+
+    return wrapped
+
+
 @pytest.fixture(autouse=True)
 def prevent_live_github_calls(monkeypatch):
     class FakeCollector:
@@ -32,7 +44,7 @@ def prevent_live_github_calls(monkeypatch):
     monkeypatch.setattr(
         check_phone,
         "discover_phone_github_mentions",
-        fake_discover,
+        _successful_discovery_mock(fake_discover),
     )
 
 
@@ -186,7 +198,7 @@ async def test_valid_phone_discovers_github_mentions(
     monkeypatch.setattr(
         check_phone,
         "discover_phone_github_mentions",
-        fake_discover,
+        _successful_discovery_mock(fake_discover),
     )
 
     class FakeCollector:
@@ -272,7 +284,7 @@ async def test_valid_phone_verifies_github_mentions(
     monkeypatch.setattr(
         check_phone,
         "discover_phone_github_mentions",
-        fake_discover,
+        _successful_discovery_mock(fake_discover),
     )
 
     monkeypatch.setattr(
@@ -366,7 +378,7 @@ async def test_valid_phone_summarizes_github_verifications(
     monkeypatch.setattr(
         check_phone,
         "discover_phone_github_mentions",
-        fake_discover,
+        _successful_discovery_mock(fake_discover),
     )
 
     monkeypatch.setattr(
@@ -559,6 +571,8 @@ async def test_valid_phone_saves_structured_report(
 
     assert saved["analysis"] == {
         "github_phone_mentions": {
+            "status": "ok",
+            "searches": [],
             "summary": summary,
             "results": verified,
         }

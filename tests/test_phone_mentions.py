@@ -17,7 +17,7 @@ async def test_phone_mentions_merge_and_deduplicate(
         ],
     )
 
-    async def fake_discover(
+    async def fake_discover_mentions(
         collector,
         query,
     ):
@@ -49,15 +49,27 @@ async def test_phone_mentions_merge_and_deduplicate(
             },
         ]
 
+    async def fake_discover(collector, query):
+        return {
+            "status": "ok",
+            "mentions": await fake_discover_mentions(
+                collector, query
+            ),
+            "error": None,
+        }
+
     monkeypatch.setattr(
         "core.phone_mentions.discover_github_mentions",
         fake_discover,
     )
 
-    mentions = await discover_phone_github_mentions(
+    result = await discover_phone_github_mentions(
         object(),
         "TEST_PHONE",
     )
+
+    assert result["status"] == "ok"
+    mentions = result["mentions"]
 
     assert len(mentions) == 2
 
@@ -77,7 +89,7 @@ async def test_phone_mentions_preserve_all_matching_variants(
         ],
     )
 
-    async def fake_discover(
+    async def fake_discover_mentions(
         collector,
         query,
     ):
@@ -94,15 +106,27 @@ async def test_phone_mentions_preserve_all_matching_variants(
             }
         ]
 
+    async def fake_discover(collector, query):
+        return {
+            "status": "ok",
+            "mentions": await fake_discover_mentions(
+                collector, query
+            ),
+            "error": None,
+        }
+
     monkeypatch.setattr(
         "core.phone_mentions.discover_github_mentions",
         fake_discover,
     )
 
-    mentions = await discover_phone_github_mentions(
+    result = await discover_phone_github_mentions(
         object(),
         "TEST_PHONE",
     )
+
+    assert result["status"] == "ok"
+    mentions = result["mentions"]
 
     assert len(mentions) == 1
     assert mentions[0]["matched_variants"] == [

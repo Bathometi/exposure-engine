@@ -55,19 +55,33 @@ async def scan_phone(
     )
 
     async with HTTPCollector() as collector:
-        mentions = await discover_phone_github_mentions(
+        discovery = await discover_phone_github_mentions(
             collector,
             raw_phone,
         )
 
         verified = await verify_github_mentions(
             collector,
-            mentions,
+            discovery["mentions"],
         )
 
     summary = summarize_github_verifications(
         verified
     )
+
+    print(
+        f"Discovery status: {discovery['status']}"
+    )
+
+    unavailable_searches = sum(
+        search["status"] == "unavailable"
+        for search in discovery["searches"]
+    )
+
+    if unavailable_searches:
+        print(
+            f"Searches unavailable: {unavailable_searches}"
+        )
 
     print("\nGITHUB PHONE MENTIONS")
     print(
@@ -117,6 +131,8 @@ async def scan_phone(
         },
         analysis={
             "github_phone_mentions": {
+                "status": discovery["status"],
+                "searches": discovery["searches"],
                 "summary": summary,
                 "results": verified,
             }
