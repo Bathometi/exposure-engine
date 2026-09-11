@@ -1,4 +1,29 @@
+import ipaddress
 from typing import Optional, Tuple
+
+
+class IPValidator:
+    """
+    Validates IPv4 and IPv6 addresses using Python's
+    standard ipaddress module.
+    """
+
+    @classmethod
+    def validate(
+        cls,
+        value: str,
+    ) -> Tuple[bool, Optional[str]]:
+        cleaned = value.strip()
+
+        if not cleaned:
+            return False, "IP address cannot be empty."
+
+        try:
+            ipaddress.ip_address(cleaned)
+        except ValueError:
+            return False, "Invalid IP address."
+
+        return True, None
 
 
 class UsernameValidator:

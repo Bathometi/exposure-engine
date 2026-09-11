@@ -7,6 +7,7 @@ class EntityType(str, Enum):
     USERNAME = "username"
     EMAIL = "email"
     PHONE = "phone"
+    IP = "ip"
 
 
 class StatusEnum(str, Enum):
