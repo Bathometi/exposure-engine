@@ -1,6 +1,7 @@
 from core.collector import HTTPCollector
 from core.internetdb import collect_internetdb_host
 from core.normalizer import Normalizer
+from core.rdap import collect_rdap_ip
 from core.reporting import save_json_report
 from core.schema import EntityType
 from core.validators import IPValidator
@@ -22,6 +23,11 @@ async def scan_ip(
 
     async with HTTPCollector() as collector:
         internetdb = await collect_internetdb_host(
+            collector,
+            normalized_ip,
+        )
+
+        rdap = await collect_rdap_ip(
             collector,
             normalized_ip,
         )
@@ -55,7 +61,28 @@ async def scan_ip(
 
     if internetdb["error"]:
         print(
-            f"Source error: {internetdb['error']}"
+            f"InternetDB error: {internetdb['error']}"
+        )
+
+    print(
+        f"RDAP status: {rdap['status']}"
+    )
+    print(
+        f"Network: {rdap['name'] or 'n/a'}"
+    )
+    print(
+        "Range: "
+        f"{rdap['start_address'] or 'n/a'}"
+        " - "
+        f"{rdap['end_address'] or 'n/a'}"
+    )
+    print(
+        f"Allocation type: {rdap['type'] or 'n/a'}"
+    )
+
+    if rdap["error"]:
+        print(
+            f"RDAP error: {rdap['error']}"
         )
 
     report_path = save_json_report(
@@ -65,6 +92,7 @@ async def scan_ip(
         evidences=[],
         enrichments={
             "internetdb": internetdb,
+            "rdap": rdap,
         },
     )
 
