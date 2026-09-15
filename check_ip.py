@@ -2,6 +2,7 @@ from core.collector import HTTPCollector
 from core.internetdb import collect_internetdb_host
 from core.normalizer import Normalizer
 from core.rdap import collect_rdap_ip
+from core.reverse_dns import collect_reverse_dns
 from core.reporting import save_json_report
 from core.schema import EntityType
 from core.validators import IPValidator
@@ -31,6 +32,10 @@ async def scan_ip(
             collector,
             normalized_ip,
         )
+
+    reverse_dns = collect_reverse_dns(
+        normalized_ip
+    )
 
     print("\nIP INTELLIGENCE")
     print(
@@ -85,6 +90,24 @@ async def scan_ip(
             f"RDAP error: {rdap['error']}"
         )
 
+    print(
+        f"Reverse DNS status: {reverse_dns['status']}"
+    )
+    print(
+        "PTR hostnames: "
+        + (
+            ", ".join(
+                reverse_dns["hostnames"]
+            )
+            or "n/a"
+        )
+    )
+
+    if reverse_dns["error"]:
+        print(
+            f"Reverse DNS error: {reverse_dns['error']}"
+        )
+
     report_path = save_json_report(
         entity_type=EntityType.IP,
         raw_value=raw_ip,
@@ -93,6 +116,7 @@ async def scan_ip(
         enrichments={
             "internetdb": internetdb,
             "rdap": rdap,
+            "reverse_dns": reverse_dns,
         },
     )
 

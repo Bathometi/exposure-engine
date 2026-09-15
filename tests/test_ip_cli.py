@@ -5,7 +5,7 @@ from core.schema import EntityType
 
 
 @pytest.mark.asyncio
-async def test_scan_ip_saves_internetdb_and_rdap(monkeypatch):
+async def test_scan_ip_saves_internetdb_rdap_and_reverse_dns(monkeypatch):
     target = "192.0.2.1"
     saved = {}
 
@@ -34,6 +34,14 @@ async def test_scan_ip_saves_internetdb_and_rdap(monkeypatch):
         "error": None,
     }
 
+    reverse_dns = {
+        "status": "ok",
+        "source": "Reverse DNS",
+        "ip": target,
+        "hostnames": ["dns.example.test"],
+        "error": None,
+    }
+
     collector_instance = object()
 
     class FakeHTTPCollector:
@@ -58,6 +66,10 @@ async def test_scan_ip_saves_internetdb_and_rdap(monkeypatch):
         assert ip == target
         return rdap
 
+    def fake_reverse_dns(ip):
+        assert ip == target
+        return reverse_dns
+
     def fake_save_json_report(**kwargs):
         saved.update(kwargs)
         return "report.json"
@@ -79,6 +91,12 @@ async def test_scan_ip_saves_internetdb_and_rdap(monkeypatch):
     )
     monkeypatch.setattr(
         check_ip,
+        "collect_reverse_dns",
+        fake_reverse_dns,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        check_ip,
         "save_json_report",
         fake_save_json_report,
     )
@@ -94,4 +112,5 @@ async def test_scan_ip_saves_internetdb_and_rdap(monkeypatch):
     assert saved["enrichments"] == {
         "internetdb": internetdb,
         "rdap": rdap,
+        "reverse_dns": reverse_dns,
     }
