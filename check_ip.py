@@ -2,7 +2,10 @@ from core.collector import HTTPCollector
 from core.internetdb import collect_internetdb_host
 from core.normalizer import Normalizer
 from core.rdap import collect_rdap_ip
-from core.reverse_dns import collect_reverse_dns
+from core.reverse_dns import (
+    collect_reverse_dns,
+    verify_forward_dns,
+)
 from core.reporting import save_json_report
 from core.schema import EntityType
 from core.validators import IPValidator
@@ -35,6 +38,11 @@ async def scan_ip(
 
     reverse_dns = collect_reverse_dns(
         normalized_ip
+    )
+
+    forward_dns = verify_forward_dns(
+        normalized_ip,
+        reverse_dns["hostnames"],
     )
 
     print("\nIP INTELLIGENCE")
@@ -108,6 +116,24 @@ async def scan_ip(
             f"Reverse DNS error: {reverse_dns['error']}"
         )
 
+    print(
+        f"Forward DNS status: {forward_dns['status']}"
+    )
+    print(
+        "Confirmed PTR hostnames: "
+        + (
+            ", ".join(
+                forward_dns["confirmed_hostnames"]
+            )
+            or "n/a"
+        )
+    )
+
+    if forward_dns["error"]:
+        print(
+            f"Forward DNS error: {forward_dns['error']}"
+        )
+
     report_path = save_json_report(
         entity_type=EntityType.IP,
         raw_value=raw_ip,
@@ -117,6 +143,7 @@ async def scan_ip(
             "internetdb": internetdb,
             "rdap": rdap,
             "reverse_dns": reverse_dns,
+            "forward_dns": forward_dns,
         },
     )
 

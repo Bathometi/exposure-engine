@@ -42,6 +42,21 @@ async def test_scan_ip_saves_internetdb_rdap_and_reverse_dns(monkeypatch):
         "error": None,
     }
 
+    forward_dns = {
+        "status": "ok",
+        "source": "Forward DNS Verification",
+        "ip": target,
+        "confirmed_hostnames": ["dns.example.test"],
+        "results": [
+            {
+                "hostname": "dns.example.test",
+                "addresses": [target],
+                "matches_ip": True,
+            }
+        ],
+        "error": None,
+    }
+
     collector_instance = object()
 
     class FakeHTTPCollector:
@@ -70,6 +85,11 @@ async def test_scan_ip_saves_internetdb_rdap_and_reverse_dns(monkeypatch):
         assert ip == target
         return reverse_dns
 
+    def fake_forward_dns(ip, hostnames):
+        assert ip == target
+        assert hostnames == ["dns.example.test"]
+        return forward_dns
+
     def fake_save_json_report(**kwargs):
         saved.update(kwargs)
         return "report.json"
@@ -97,6 +117,12 @@ async def test_scan_ip_saves_internetdb_rdap_and_reverse_dns(monkeypatch):
     )
     monkeypatch.setattr(
         check_ip,
+        "verify_forward_dns",
+        fake_forward_dns,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        check_ip,
         "save_json_report",
         fake_save_json_report,
     )
@@ -113,4 +139,5 @@ async def test_scan_ip_saves_internetdb_rdap_and_reverse_dns(monkeypatch):
         "internetdb": internetdb,
         "rdap": rdap,
         "reverse_dns": reverse_dns,
+        "forward_dns": forward_dns,
     }
