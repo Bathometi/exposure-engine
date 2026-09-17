@@ -37,7 +37,11 @@ def test_rejects_empty_target():
 def test_launcher_dispatches_username(monkeypatch):
     received = []
 
-    async def fake_scan_username(value):
+    async def fake_scan_username(
+        value,
+        verbose=False,
+    ):
+        assert verbose is False
         received.append(value)
         return True
 
@@ -183,3 +187,41 @@ def test_launcher_dispatches_phone(monkeypatch):
     exposure.main()
 
     assert received == [target]
+
+
+
+def test_launcher_passes_verbose_flag_to_username_scan(
+    monkeypatch,
+):
+    received = []
+
+    async def fake_scan_username(
+        value,
+        verbose=False,
+    ):
+        received.append(
+            (value, verbose)
+        )
+        return True
+
+    monkeypatch.setattr(
+        exposure,
+        "scan_username",
+        fake_scan_username,
+    )
+
+    monkeypatch.setattr(
+        exposure.sys,
+        "argv",
+        [
+            "exposure.py",
+            "test_username",
+            "--verbose",
+        ],
+    )
+
+    exposure.main()
+
+    assert received == [
+        ("test_username", True)
+    ]
