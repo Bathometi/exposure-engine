@@ -74,8 +74,8 @@ async def test_username_cli_shows_youtube_channel_details(
         ):
             return Evidence(
                 entity_type=EntityType.USERNAME,
-                raw_value="@somehandle",
-                normalized_value="somehandle",
+                raw_value="@test_username",
+                normalized_value="test_username",
                 source_name=source_name,
                 status=StatusEnum.FOUND,
                 confidence=ConfidenceLevel.HIGH,
@@ -87,7 +87,7 @@ async def test_username_cli_shows_youtube_channel_details(
                     ),
                     "channel_id": "UC123456",
                     "title": "Example Channel",
-                    "custom_url": "@somehandle",
+                    "custom_url": "@test_username",
                     "published_at": "2020-01-02T03:04:05Z",
                     "subscriber_count": "56",
                     "video_count": "7",
@@ -137,7 +137,8 @@ async def test_username_cli_shows_youtube_channel_details(
     )
 
     result = await check_username.scan_username(
-        "@somehandle"
+        "@test_username",
+        verbose=True,
     )
 
     rendered = output.getvalue()
@@ -148,7 +149,7 @@ async def test_username_cli_shows_youtube_channel_details(
     assert "Title" in rendered
     assert "Example Channel" in rendered
     assert "Handle" in rendered
-    assert "@somehandle" in rendered
+    assert "@test_username" in rendered
     assert "Published At" in rendered
     assert "2020-01-02 03:04:05 UTC" in rendered
     assert "Subscribers" in rendered
@@ -369,7 +370,8 @@ async def test_username_cli_shows_display_name_detail(
     )
 
     result = await check_username.scan_username(
-        "test_username"
+        "test_username",
+        verbose=True,
     )
 
     rendered = output.getvalue()
@@ -422,3 +424,95 @@ def test_username_cli_accepts_command_line_argument(
     assert received == [
         "test_username"
     ]
+
+
+@pytest.mark.asyncio
+async def test_username_cli_compact_mode_hides_technical_details(
+    monkeypatch,
+):
+    from io import StringIO
+
+    from rich.console import Console
+
+    from core.schema import (
+        ConfidenceLevel,
+        EntityType,
+        Evidence,
+        StatusEnum,
+    )
+
+    class FakeCollector:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(
+            self,
+            exc_type,
+            exc,
+            traceback,
+        ):
+            return False
+
+        async def check_platform(
+            self,
+            source_name,
+            **kwargs,
+        ):
+            return Evidence(
+                entity_type=EntityType.USERNAME,
+                raw_value="test_username",
+                normalized_value="test_username",
+                source_name=source_name,
+                status=StatusEnum.FOUND,
+                confidence=ConfidenceLevel.HIGH,
+                details={
+                    "http_status": 200,
+                    "target_url": "https://example.test/profile",
+                    "display_name": "Test User",
+                },
+                limitations="Test detector.",
+            )
+
+    output = StringIO()
+
+    monkeypatch.setattr(
+        check_username,
+        "console",
+        Console(
+            file=output,
+            force_terminal=False,
+            width=200,
+        ),
+    )
+
+    monkeypatch.setattr(
+        check_username,
+        "HTTPCollector",
+        FakeCollector,
+    )
+
+    monkeypatch.setattr(
+        check_username,
+        "PLATFORMS",
+        {
+            "TestPlatform": {},
+        },
+    )
+
+    monkeypatch.setattr(
+        check_username,
+        "save_json_report",
+        lambda **kwargs: "report.json",
+    )
+
+    result = await check_username.scan_username(
+        "test_username",
+        verbose=False,
+    )
+
+    rendered = output.getvalue()
+
+    assert result is True
+    assert "https://example.test/profile" not in rendered
+    assert "FOUND SOURCES" in rendered
+    assert "IDENTITY SIGNALS" in rendered
