@@ -516,3 +516,94 @@ async def test_username_cli_compact_mode_hides_technical_details(
     assert "https://example.test/profile" not in rendered
     assert "FOUND SOURCES" in rendered
     assert "IDENTITY SIGNALS" in rendered
+
+
+@pytest.mark.asyncio
+async def test_username_cli_compact_mode_shows_website_pivots(
+    monkeypatch,
+):
+    from io import StringIO
+
+    from rich.console import Console
+
+    from core.schema import (
+        ConfidenceLevel,
+        EntityType,
+        Evidence,
+        StatusEnum,
+    )
+
+    class FakeCollector:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(
+            self,
+            exc_type,
+            exc,
+            traceback,
+        ):
+            return False
+
+        async def check_platform(
+            self,
+            source_name,
+            **kwargs,
+        ):
+            return Evidence(
+                entity_type=EntityType.USERNAME,
+                raw_value="test_username",
+                normalized_value="test_username",
+                source_name=source_name,
+                status=StatusEnum.FOUND,
+                confidence=ConfidenceLevel.HIGH,
+                details={
+                    "website_url": "https://example.com",
+                },
+                limitations=None,
+            )
+
+    output = StringIO()
+
+    monkeypatch.setattr(
+        check_username,
+        "console",
+        Console(
+            file=output,
+            force_terminal=False,
+            width=200,
+        ),
+    )
+
+    monkeypatch.setattr(
+        check_username,
+        "HTTPCollector",
+        FakeCollector,
+    )
+
+    monkeypatch.setattr(
+        check_username,
+        "PLATFORMS",
+        {
+            "SourceA": {},
+        },
+    )
+
+    monkeypatch.setattr(
+        check_username,
+        "save_json_report",
+        lambda **kwargs: "report.json",
+    )
+
+    result = await check_username.scan_username(
+        "test_username",
+        verbose=False,
+    )
+
+    rendered = output.getvalue()
+
+    assert result is True
+    assert "PIVOTS" in rendered
+    assert "website" in rendered
+    assert "https://example.com" in rendered
+    assert "SourceA" in rendered

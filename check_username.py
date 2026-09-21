@@ -528,6 +528,40 @@ async def scan_username(
             "is not confirmed.[/dim]"
         )
 
+    if summary["pivots"]:
+        pivots_table = Table(
+            title="PIVOTS",
+            box=box.SIMPLE,
+        )
+
+        pivots_table.add_column(
+            "Type"
+        )
+
+        pivots_table.add_column(
+            "Value"
+        )
+
+        pivots_table.add_column(
+            "Sources"
+        )
+
+        for pivot in summary["pivots"]:
+            pivots_table.add_row(
+                pivot["type"],
+                str(pivot["value"]),
+                ", ".join(pivot["sources"]),
+            )
+
+        console.print(
+            pivots_table
+        )
+
+        console.print(
+            "[dim]Candidate pivots only - "
+            "identity is not confirmed.[/dim]"
+        )
+
     report_path = save_json_report(
         entity_type=EntityType.USERNAME,
         raw_value=raw_username,

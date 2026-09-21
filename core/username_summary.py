@@ -1,3 +1,4 @@
+from core.pivots import collect_username_pivots
 from core.schema import StatusEnum
 
 
@@ -45,9 +46,14 @@ def build_username_summary(
                 }
             )
 
+    pivots = collect_username_pivots(
+        evidences
+    )
+
     return {
         "found_sources": found_sources,
         "not_found_sources": not_found_sources,
         "attention_sources": attention_sources,
         "identity_signals": identity_signals,
+        "pivots": pivots,
     }

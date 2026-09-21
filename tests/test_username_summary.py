@@ -56,6 +56,7 @@ def test_build_username_summary_groups_sources():
             },
         ],
         "identity_signals": [],
+        "pivots": [],
     }
 
 
@@ -93,3 +94,135 @@ def test_build_username_summary_extracts_identity_signals():
             "value": "Test Display",
         },
     ]
+
+
+def test_build_username_summary_collects_website_pivots():
+    evidences = [
+        SimpleNamespace(
+            source_name="SourceA",
+            status=StatusEnum.FOUND,
+            details={
+                "website_url": "https://example.com",
+            },
+        ),
+        SimpleNamespace(
+            source_name="SourceB",
+            status=StatusEnum.FOUND,
+            details={
+                "website_url": "https://example.com",
+            },
+        ),
+    ]
+
+    summary = build_username_summary(
+        evidences
+    )
+
+    assert summary["pivots"] == [
+        {
+            "type": "website",
+            "value": "https://example.com",
+            "sources": [
+                "SourceA",
+                "SourceB",
+            ],
+        }
+    ]
+
+
+def test_build_username_summary_collects_related_username_pivots():
+    evidences = [
+        SimpleNamespace(
+            source_name="SourceA",
+            status=StatusEnum.FOUND,
+            details={
+                "github_username": "TEST_VARIANT",
+            },
+        ),
+        SimpleNamespace(
+            source_name="SourceB",
+            status=StatusEnum.FOUND,
+            details={
+                "github_username": "TEST_VARIANT",
+            },
+        ),
+    ]
+
+    summary = build_username_summary(
+        evidences
+    )
+
+    assert {
+        "type": "related_username",
+        "value": "test_variant",
+        "sources": [
+            "SourceA",
+            "SourceB",
+        ],
+    } in summary["pivots"]
+
+
+def test_build_username_summary_normalizes_website_pivots():
+    evidences = [
+        SimpleNamespace(
+            source_name="SourceA",
+            status=StatusEnum.FOUND,
+            details={
+                "website_url": "https://EXAMPLE.com/",
+            },
+        ),
+        SimpleNamespace(
+            source_name="SourceB",
+            status=StatusEnum.FOUND,
+            details={
+                "website_url": "https://example.com",
+            },
+        ),
+    ]
+
+    summary = build_username_summary(
+        evidences
+    )
+
+    assert summary["pivots"] == [
+        {
+            "type": "website",
+            "value": "https://example.com",
+            "sources": [
+                "SourceA",
+                "SourceB",
+            ],
+        }
+    ]
+
+
+def test_build_username_summary_normalizes_related_username_pivots():
+    evidences = [
+        SimpleNamespace(
+            source_name="SourceA",
+            status=StatusEnum.FOUND,
+            details={
+                "github_username": "@TEST_VARIANT",
+            },
+        ),
+        SimpleNamespace(
+            source_name="SourceB",
+            status=StatusEnum.FOUND,
+            details={
+                "twitter_username": "test_variant",
+            },
+        ),
+    ]
+
+    summary = build_username_summary(
+        evidences
+    )
+
+    assert {
+        "type": "related_username",
+        "value": "test_variant",
+        "sources": [
+            "SourceA",
+            "SourceB",
+        ],
+    } in summary["pivots"]
