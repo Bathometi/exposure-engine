@@ -104,3 +104,73 @@ def collect_username_pivots(
         )
 
     return pivots
+
+
+def pivot_to_next_target(
+    pivot,
+) -> dict | None:
+    pivot_type = pivot.get("type")
+    value = pivot.get("value")
+
+    if pivot_type == "related_username":
+        target_type = "username"
+
+    elif pivot_type == "website":
+        parsed = urlsplit(value)
+
+        if not parsed.hostname:
+            return None
+
+        target_type = "domain"
+        value = parsed.hostname.lower()
+
+    else:
+        return None
+
+    return {
+        "target_type": target_type,
+        "value": value,
+        "sources": pivot.get(
+            "sources",
+            [],
+        ),
+    }
+
+
+def collect_next_targets(
+    pivots,
+) -> list[dict]:
+    target_index = {}
+
+    for pivot in pivots:
+        target = pivot_to_next_target(
+            pivot
+        )
+
+        if target is None:
+            continue
+
+        key = (
+            target["target_type"],
+            target["value"],
+        )
+
+        if key not in target_index:
+            target_index[key] = {
+                "target_type": target["target_type"],
+                "value": target["value"],
+                "sources": [],
+            }
+
+        for source in target["sources"]:
+            if (
+                source
+                not in target_index[key]["sources"]
+            ):
+                target_index[key]["sources"].append(
+                    source
+                )
+
+    return list(
+        target_index.values()
+    )

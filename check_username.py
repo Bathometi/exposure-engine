@@ -562,6 +562,40 @@ async def scan_username(
             "identity is not confirmed.[/dim]"
         )
 
+    if summary["next_targets"]:
+        targets_table = Table(
+            title="NEXT TARGETS",
+            box=box.SIMPLE,
+        )
+
+        targets_table.add_column(
+            "Type"
+        )
+
+        targets_table.add_column(
+            "Value"
+        )
+
+        targets_table.add_column(
+            "Sources"
+        )
+
+        for target in summary["next_targets"]:
+            targets_table.add_row(
+                target["target_type"],
+                str(target["value"]),
+                ", ".join(target["sources"]),
+            )
+
+        console.print(
+            targets_table
+        )
+
+        console.print(
+            "[dim]Candidate next targets only - "
+            "identity is not confirmed.[/dim]"
+        )
+
     report_path = save_json_report(
         entity_type=EntityType.USERNAME,
         raw_value=raw_username,
