@@ -55,6 +55,7 @@ def main():
         sys.exit(1)
 
     target = sys.argv[1]
+    verbose = "--verbose" in sys.argv[2:]
     target_type = detect_target_type(target)
 
     if target_type == "email":
@@ -63,7 +64,10 @@ def main():
         )
     elif target_type == "username":
         completed = asyncio.run(
-            scan_username(target)
+            scan_username(
+                target,
+                verbose=verbose,
+            )
         )
     elif target_type == "phone":
         completed = asyncio.run(

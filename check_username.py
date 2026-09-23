@@ -13,6 +13,7 @@ from core.normalizer import Normalizer
 from core.reporting import save_json_report
 from core.schema import EntityType, StatusEnum
 from core.validators import UsernameValidator
+from core.username_summary import build_username_summary
 from core.youtube_discovery import discover_youtube_channels
 
 
@@ -74,6 +75,7 @@ def add_detail_row(
 
 async def scan_username(
     raw_username: str,
+    verbose: bool = False,
 ):
     normalized_username = Normalizer.normalize(
         EntityType.USERNAME,
@@ -184,6 +186,9 @@ async def scan_username(
         evidence_results.append(
             result
         )
+
+        if not verbose:
+            continue
 
         style = STATUS_STYLES.get(
             result.status,
@@ -418,13 +423,17 @@ async def scan_username(
             )
         )
 
+    summary = build_username_summary(
+        evidence_results
+    )
+
     summary_table = Table(
         title="SCAN SUMMARY",
         box=box.ROUNDED,
     )
 
     summary_table.add_column(
-        "Status"
+        "Category"
     )
 
     summary_table.add_column(
@@ -432,28 +441,160 @@ async def scan_username(
         justify="right",
     )
 
-    for status in [
-        StatusEnum.FOUND,
-        StatusEnum.NOT_FOUND,
-        StatusEnum.RATE_LIMITED,
-        StatusEnum.BLOCKED,
-        StatusEnum.UNKNOWN,
-        StatusEnum.ERROR,
-    ]:
-        count = sum(
-            1
-            for result in evidence_results
-            if result.status == status
-        )
+    summary_table.add_row(
+        "FOUND",
+        str(len(summary["found_sources"])),
+    )
 
-        summary_table.add_row(
-            status.value.upper(),
-            str(count),
-        )
+    summary_table.add_row(
+        "NOT_FOUND",
+        str(len(summary["not_found_sources"])),
+    )
+
+    summary_table.add_row(
+        "ATTENTION",
+        str(len(summary["attention_sources"])),
+    )
 
     console.print(
         summary_table
     )
+
+    if summary["found_sources"]:
+        console.print(
+            "\n[bold green]FOUND SOURCES[/bold green]"
+        )
+
+        for source in summary["found_sources"]:
+            console.print(
+                f"  [green]✓[/green] {source}"
+            )
+
+    if summary["attention_sources"]:
+        attention_table = Table(
+            title="ATTENTION",
+            box=box.SIMPLE,
+        )
+
+        attention_table.add_column(
+            "Source"
+        )
+
+        attention_table.add_column(
+            "Status"
+        )
+
+        for item in summary["attention_sources"]:
+            attention_table.add_row(
+                item["source"],
+                item["status"].upper(),
+            )
+
+        console.print(
+            attention_table
+        )
+
+    if summary["identity_signals"]:
+        signals_table = Table(
+            title="IDENTITY SIGNALS",
+            box=box.SIMPLE,
+        )
+
+        signals_table.add_column(
+            "Source"
+        )
+
+        signals_table.add_column(
+            "Field"
+        )
+
+        signals_table.add_column(
+            "Value"
+        )
+
+        for signal in summary["identity_signals"]:
+            signals_table.add_row(
+                signal["source"],
+                signal["field"],
+                str(signal["value"]),
+            )
+
+        console.print(
+            signals_table
+        )
+
+        console.print(
+            "[dim]Signals only - cross-platform identity "
+            "is not confirmed.[/dim]"
+        )
+
+    if summary["pivots"]:
+        pivots_table = Table(
+            title="PIVOTS",
+            box=box.SIMPLE,
+        )
+
+        pivots_table.add_column(
+            "Type"
+        )
+
+        pivots_table.add_column(
+            "Value"
+        )
+
+        pivots_table.add_column(
+            "Sources"
+        )
+
+        for pivot in summary["pivots"]:
+            pivots_table.add_row(
+                pivot["type"],
+                str(pivot["value"]),
+                ", ".join(pivot["sources"]),
+            )
+
+        console.print(
+            pivots_table
+        )
+
+        console.print(
+            "[dim]Candidate pivots only - "
+            "identity is not confirmed.[/dim]"
+        )
+
+    if summary["next_targets"]:
+        targets_table = Table(
+            title="NEXT TARGETS",
+            box=box.SIMPLE,
+        )
+
+        targets_table.add_column(
+            "Type"
+        )
+
+        targets_table.add_column(
+            "Value"
+        )
+
+        targets_table.add_column(
+            "Sources"
+        )
+
+        for target in summary["next_targets"]:
+            targets_table.add_row(
+                target["target_type"],
+                str(target["value"]),
+                ", ".join(target["sources"]),
+            )
+
+        console.print(
+            targets_table
+        )
+
+        console.print(
+            "[dim]Candidate next targets only - "
+            "identity is not confirmed.[/dim]"
+        )
 
     report_path = save_json_report(
         entity_type=EntityType.USERNAME,
