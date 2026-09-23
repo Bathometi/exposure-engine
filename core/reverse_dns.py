@@ -4,6 +4,9 @@ import dns.resolver
 import dns.reversename
 
 
+DNS_LIFETIME = 3.0
+
+
 def collect_reverse_dns(
     ip: str,
 ) -> dict:
@@ -15,6 +18,7 @@ def collect_reverse_dns(
         answers = dns.resolver.resolve(
             reverse_name,
             "PTR",
+            lifetime=DNS_LIFETIME,
         )
     except (
         dns.resolver.NoAnswer,
@@ -89,6 +93,7 @@ def verify_forward_dns(
             answers = dns.resolver.resolve(
                 hostname,
                 record_type,
+                lifetime=DNS_LIFETIME,
             )
         except (
             dns.resolver.NoAnswer,
@@ -105,6 +110,18 @@ def verify_forward_dns(
             continue
         except dns.exception.Timeout:
             unavailable_error = "DNS timeout"
+            results.append(
+                {
+                    "hostname": hostname,
+                    "addresses": [],
+                    "matches_ip": False,
+                    "error": unavailable_error,
+                }
+            )
+            continue
+
+        except dns.resolver.NoNameservers:
+            unavailable_error = "DNS nameservers unavailable"
             results.append(
                 {
                     "hostname": hostname,

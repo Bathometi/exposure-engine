@@ -1,3 +1,5 @@
+import asyncio
+
 from core.collector import HTTPCollector
 from core.internetdb import collect_internetdb_host
 from core.normalizer import Normalizer
@@ -25,15 +27,18 @@ async def scan_ip(
         raw_ip
     )
 
-    async with HTTPCollector() as collector:
-        internetdb = await collect_internetdb_host(
-            collector,
-            normalized_ip,
-        )
-
-        rdap = await collect_rdap_ip(
-            collector,
-            normalized_ip,
+    async with HTTPCollector(
+        max_retries=1,
+    ) as collector:
+        internetdb, rdap = await asyncio.gather(
+            collect_internetdb_host(
+                collector,
+                normalized_ip,
+            ),
+            collect_rdap_ip(
+                collector,
+                normalized_ip,
+            ),
         )
 
     reverse_dns = collect_reverse_dns(

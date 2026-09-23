@@ -218,3 +218,62 @@ async def test_request_retries_timeout_then_succeeds(monkeypatch):
     assert result.error is None
     assert state["requests"] == 2
     assert sleep_calls == [2]
+
+
+@pytest.mark.asyncio
+async def test_request_invalid_json_returns_error(monkeypatch):
+    import json
+
+    class FakeResponse:
+        status = 200
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        async def json(self):
+            raise json.JSONDecodeError(
+                "Invalid JSON",
+                "",
+                0,
+            )
+
+    class FakeClientSession:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return False
+
+        def get(
+            self,
+            url,
+            headers=None,
+            params=None,
+            allow_redirects=True,
+        ):
+            return FakeResponse()
+
+    monkeypatch.setattr(
+        collector_module.aiohttp,
+        "ClientSession",
+        FakeClientSession,
+    )
+
+    collector = HTTPCollector(
+        max_retries=0
+    )
+
+    result = await collector.request(
+        url="https://example.test/data",
+        response_type="json",
+    )
+
+    assert result.status_code == 200
+    assert result.response_data is None
+    assert result.error == "Invalid JSON response."

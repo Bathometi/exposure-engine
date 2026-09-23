@@ -186,7 +186,17 @@ class HTTPCollector:
                         elif response_type == "json":
                             try:
                                 response_data = await response.json()
-                            except Exception:
+                            except (
+                                aiohttp.ContentTypeError,
+                                ValueError,
+                            ):
+                                if status_code == 200:
+                                    return HTTPResult(
+                                        status_code=status_code,
+                                        response_data=None,
+                                        error="Invalid JSON response.",
+                                    )
+
                                 response_data = None
                         else:
                             return HTTPResult(

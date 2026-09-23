@@ -60,6 +60,12 @@ async def test_scan_ip_saves_internetdb_rdap_and_reverse_dns(monkeypatch):
     collector_instance = object()
 
     class FakeHTTPCollector:
+        def __init__(
+            self,
+            max_retries=3,
+        ):
+            assert max_retries == 1
+
         async def __aenter__(self):
             return collector_instance
 

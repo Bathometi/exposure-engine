@@ -132,6 +132,7 @@ def test_forward_dns_confirms_matching_ipv4():
     mock_resolve.assert_called_once_with(
         "dns.example.test",
         "A",
+        lifetime=3.0,
     )
 
 
@@ -200,6 +201,7 @@ def test_forward_dns_uses_aaaa_for_ipv6():
     mock_resolve.assert_called_once_with(
         "dns.example.test",
         "AAAA",
+        lifetime=3.0,
     )
 
 
@@ -332,4 +334,38 @@ def test_forward_dns_without_hostnames_is_not_applicable():
         "confirmed_hostnames": [],
         "results": [],
         "error": None,
+    }
+
+
+def test_forward_dns_no_nameservers_means_unavailable():
+    import dns.resolver
+
+    from core.reverse_dns import verify_forward_dns
+
+    with patch(
+        "core.reverse_dns.dns.resolver.resolve"
+    ) as mock_resolve:
+        mock_resolve.side_effect = (
+            dns.resolver.NoNameservers
+        )
+
+        result = verify_forward_dns(
+            "192.0.2.1",
+            ["dns.example.test"],
+        )
+
+    assert result == {
+        "status": "unavailable",
+        "source": "Forward DNS Verification",
+        "ip": "192.0.2.1",
+        "confirmed_hostnames": [],
+        "results": [
+            {
+                "hostname": "dns.example.test",
+                "addresses": [],
+                "matches_ip": False,
+                "error": "DNS nameservers unavailable",
+            }
+        ],
+        "error": "DNS nameservers unavailable",
     }
