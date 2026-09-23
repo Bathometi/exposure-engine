@@ -189,6 +189,64 @@ def test_launcher_dispatches_phone(monkeypatch):
     assert received == [target]
 
 
+def test_detects_ipv4_target():
+    assert (
+        exposure.detect_target_type(
+            "192.0.2.1"
+        )
+        == "ip"
+    )
+
+
+def test_launcher_dispatches_ip(monkeypatch):
+    received = []
+
+    async def fake_scan_ip(value):
+        received.append(value)
+        return True
+
+    async def fail_scan(value):
+        raise AssertionError(
+            "Wrong scanner was called"
+        )
+
+    monkeypatch.setattr(
+        exposure,
+        "scan_ip",
+        fake_scan_ip,
+        raising=False,
+    )
+    monkeypatch.setattr(
+        exposure,
+        "scan_username",
+        fail_scan,
+    )
+    monkeypatch.setattr(
+        exposure,
+        "scan_email",
+        fail_scan,
+    )
+    monkeypatch.setattr(
+        exposure,
+        "scan_phone",
+        fail_scan,
+    )
+
+    monkeypatch.setattr(
+        exposure.sys,
+        "argv",
+        [
+            "exposure.py",
+            "192.0.2.1",
+        ],
+    )
+
+    exposure.main()
+
+    assert received == [
+        "192.0.2.1",
+    ]
+
 
 def test_launcher_passes_verbose_flag_to_username_scan(
     monkeypatch,

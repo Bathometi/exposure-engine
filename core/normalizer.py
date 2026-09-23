@@ -1,3 +1,4 @@
+import ipaddress
 import re
 from core.schema import EntityType
 
@@ -22,6 +23,12 @@ class Normalizer:
         digits_only = re.sub(r"\D", "", cleaned)
         return f"+{digits_only}" if has_plus else digits_only
 
+    @staticmethod
+    def normalize_ip(ip: str) -> str:
+        """Повертає канонічне представлення IPv4 або IPv6."""
+        cleaned = ip.strip()
+        return str(ipaddress.ip_address(cleaned))
+
     @classmethod
     def normalize(cls, entity_type: EntityType, raw_value: str) -> str:
         if entity_type == EntityType.EMAIL:
@@ -30,4 +37,6 @@ class Normalizer:
             return cls.normalize_username(raw_value)
         elif entity_type == EntityType.PHONE:
             return cls.normalize_phone(raw_value)
+        elif entity_type == EntityType.IP:
+            return cls.normalize_ip(raw_value)
         return raw_value.strip()

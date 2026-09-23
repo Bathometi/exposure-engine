@@ -2,10 +2,12 @@ import asyncio
 import sys
 
 from check_email import scan_email
+from check_ip import scan_ip
 from check_phone import scan_phone
 from check_username import scan_username
 from core.validators import (
     EmailValidator,
+    IPValidator,
     PhoneValidator,
     UsernameValidator,
 )
@@ -27,6 +29,13 @@ def detect_target_type(value: str) -> str | None:
 
     if phone_valid:
         return "phone"
+
+    ip_valid, _ = IPValidator.validate(
+        cleaned
+    )
+
+    if ip_valid:
+        return "ip"
 
     username_valid, _ = UsernameValidator.validate(
         cleaned
@@ -63,6 +72,10 @@ def main():
     elif target_type == "phone":
         completed = asyncio.run(
             scan_phone(target)
+        )
+    elif target_type == "ip":
+        completed = asyncio.run(
+            scan_ip(target)
         )
     else:
         print(

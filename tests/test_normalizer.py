@@ -102,3 +102,22 @@ def test_username_normalization_multiple_leading_at_symbols():
     )
 
     assert result == "somename"
+
+
+def test_normalize_ip_canonicalizes_ipv6():
+    assert (
+        Normalizer.normalize_ip(
+            " 2001:0db8:0000:0000:0000:0000:0000:0001 "
+        )
+        == "2001:db8::1"
+    )
+
+
+def test_normalize_dispatches_ip():
+    assert (
+        Normalizer.normalize(
+            EntityType.IP,
+            " 2001:0db8:0000:0000:0000:0000:0000:0001 ",
+        )
+        == "2001:db8::1"
+    )
