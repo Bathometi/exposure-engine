@@ -57,6 +57,7 @@ def test_build_username_summary_groups_sources():
         ],
         "identity_signals": [],
         "pivots": [],
+        "next_targets": [],
     }
 
 
@@ -226,3 +227,29 @@ def test_build_username_summary_normalizes_related_username_pivots():
             "SourceB",
         ],
     } in summary["pivots"]
+
+
+def test_build_username_summary_collects_next_targets():
+    evidences = [
+        SimpleNamespace(
+            source_name="SourceA",
+            status=StatusEnum.FOUND,
+            details={
+                "website_url": "https://example.com/profile",
+            },
+        ),
+    ]
+
+    summary = build_username_summary(
+        evidences
+    )
+
+    assert summary["next_targets"] == [
+        {
+            "target_type": "domain",
+            "value": "example.com",
+            "sources": [
+                "SourceA",
+            ],
+        }
+    ]

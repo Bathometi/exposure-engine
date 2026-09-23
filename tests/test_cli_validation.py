@@ -607,3 +607,6 @@ async def test_username_cli_compact_mode_shows_website_pivots(
     assert "website" in rendered
     assert "https://example.com" in rendered
     assert "SourceA" in rendered
+
+    assert "NEXT TARGETS" in rendered
+    assert "domain" in rendered
