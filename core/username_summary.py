@@ -1,3 +1,4 @@
+from core.continuation import build_continuation_actions
 from core.pivots import collect_next_targets, collect_username_pivots
 from core.schema import StatusEnum
 
@@ -54,6 +55,10 @@ def build_username_summary(
         pivots
     )
 
+    continuation_actions = build_continuation_actions(
+        next_targets
+    )
+
     return {
         "found_sources": found_sources,
         "not_found_sources": not_found_sources,
@@ -61,4 +66,5 @@ def build_username_summary(
         "identity_signals": identity_signals,
         "pivots": pivots,
         "next_targets": next_targets,
+        "continuation_actions": continuation_actions,
     }

@@ -58,6 +58,7 @@ def test_build_username_summary_groups_sources():
         "identity_signals": [],
         "pivots": [],
         "next_targets": [],
+        "continuation_actions": [],
     }
 
 
@@ -248,6 +249,34 @@ def test_build_username_summary_collects_next_targets():
         {
             "target_type": "domain",
             "value": "example.com",
+            "sources": [
+                "SourceA",
+            ],
+        }
+    ]
+
+
+def test_build_username_summary_adds_continuation_actions():
+    evidences = [
+        SimpleNamespace(
+            source_name="SourceA",
+            status=StatusEnum.FOUND,
+            details={
+                "github_username": "TEST_VARIANT",
+            },
+        ),
+    ]
+
+    summary = build_username_summary(
+        evidences
+    )
+
+    assert summary["continuation_actions"] == [
+        {
+            "status": "ready",
+            "scanner": "username",
+            "target_type": "username",
+            "value": "test_variant",
             "sources": [
                 "SourceA",
             ],

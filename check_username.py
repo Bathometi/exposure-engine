@@ -9,6 +9,7 @@ from rich.table import Table
 
 from config.platforms import PLATFORMS
 from core.collector import HTTPCollector
+from core.continuation import run_continuation_action
 from core.normalizer import Normalizer
 from core.reporting import save_json_report
 from core.schema import EntityType, StatusEnum
@@ -73,9 +74,44 @@ def add_detail_row(
         )
 
 
+async def prompt_and_run_continuation(
+    action,
+    prompt_fn=None,
+) -> bool:
+    if action.get("status") != "ready":
+        return False
+
+    if prompt_fn is None:
+        prompt_fn = input
+
+    answer = prompt_fn(
+        "Run this target? [y/N]: "
+    ).strip().lower()
+
+    if answer not in {
+        "y",
+        "yes",
+    }:
+        return False
+
+    async def run_username(value):
+        return await scan_username(
+            value,
+            allow_continuation=False,
+        )
+
+    return await run_continuation_action(
+        action,
+        {
+            "username": run_username,
+        },
+    )
+
+
 async def scan_username(
     raw_username: str,
     verbose: bool = False,
+    allow_continuation: bool = True,
 ):
     normalized_username = Normalizer.normalize(
         EntityType.USERNAME,
@@ -596,6 +632,41 @@ async def scan_username(
             "identity is not confirmed.[/dim]"
         )
 
+    if summary["continuation_actions"]:
+        continuation_table = Table(
+            title="CONTINUATION",
+            box=box.SIMPLE,
+        )
+
+        continuation_table.add_column(
+            "Status"
+        )
+        continuation_table.add_column(
+            "Scanner"
+        )
+        continuation_table.add_column(
+            "Type"
+        )
+        continuation_table.add_column(
+            "Value"
+        )
+        continuation_table.add_column(
+            "Sources"
+        )
+
+        for action in summary["continuation_actions"]:
+            continuation_table.add_row(
+                action["status"],
+                action["scanner"] or "n/a",
+                action["target_type"],
+                str(action["value"]),
+                ", ".join(action["sources"]),
+            )
+
+        console.print(
+            continuation_table
+        )
+
     report_path = save_json_report(
         entity_type=EntityType.USERNAME,
         raw_value=raw_username,
@@ -607,6 +678,18 @@ async def scan_username(
         f"\n[green]Report saved:[/green] "
         f"{report_path}"
     )
+
+    if allow_continuation:
+        ready_actions = [
+            action
+            for action in summary["continuation_actions"]
+            if action["status"] == "ready"
+        ]
+
+        if ready_actions:
+            await prompt_and_run_continuation(
+                ready_actions[0]
+            )
 
     return True
 
